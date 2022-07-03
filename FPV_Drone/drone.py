@@ -13,27 +13,44 @@ def mag(v1):
 class DroneState:
     position = [0, 0, 0]
     velocity = [0, 0, 0]
-    force = [0, 0, 0]
-    forwardVector = [0,0,0]
-    upVector = [0,0,0]
     isAsleep = False
 
-def airDrag(density, speed, coefficient, area, minAreaCoeff, vec1, vec2):
-    angle = math.degrees(math.acos(dot(vec1,vec2)/(mag(vec1)*mag(vec2))))
-    c = abs(-1*(1-minAreaCoeff)/90*angle+(1-minAreaCoeff))+minAreaCoeff # c=1 at 0 and 180 degrees and c=minAreaCoeff at 90 degrees
-    # FPV_Drone.console(angle, c, mag(velocity))
-    return 0.5*density*speed*abs(speed)*coefficient*area*c
+def airDrag(density, speed, coefficient, area, minAreaCoeff, angle):
+    areaCoeff = math.cos(angle*2)/2*(1-minAreaCoeff)+(1-(1-minAreaCoeff)/2) # c=1 at 0 and 180 degrees and c=minAreaCoeff at 90 degrees
+    # FPV_Drone.console(areaCoeff)
+    return (density*(5*coefficient)*area*areaCoeff)/2*speed*abs(speed)
 
+def throttleForce(motorKv, throttle, inflowVelocity):
+    if not Values.linearAcceleration:
+        a = Values.airDensity*(3.14*((0.0254*Values.propDiameter)**2)/4)*((Values.propDiameter/(3.29547*(Values.propPitch+0.5)))**1.5)*1.5*4
+        maxRPM = min(motorKv*Values.batteryCells*3.7*(5.4/(Values.propDiameter**1.1)), motorKv*Values.batteryCells*3.7)
+        rpm = throttle*maxRPM
+        maxVe = maxRPM*0.0254*(Values.propPitch+0.5)/60
+        Ve = rpm*0.0254*(Values.propPitch+0.5)/60
+        force = a*(Ve**2)
+        if inflowVelocity>=0:
+            ic = max(0.2, (maxVe-inflowVelocity)/maxVe)
+        else:
+            ic = max(0.2, (maxVe+inflowVelocity)/maxVe)
+        force*=ic
+        if throttle < 0:
+            force *= -1
+        # FPV_Drone.console(throttle, a, ic, force, inflowVelocity, ic, rpm, maxRPM, mag(DroneState.velocity))
+    else:
+        force = throttle * motorKv/30
+        # FPV_Drone.console(throttle, force)
+    return force   
+    
 def startDrone(startPos):
     DroneState.position = [startPos[0], startPos[1], startPos[2]]
-    DroneState.velocity = [0, 10, 0]
+    DroneState.velocity = [0.01, 10, 0]
     ac.setCameraMode(6)
     ac.ext_setCameraFov(float(Values.cameraFov))
     AppState.toggleDrone = True
 
 def dronePhysics(deltaT):
     airDragCoefficient = Values.airDrag/100
-    droneSurfaceArea = Values.droneSurfaceArea
+    droneSurfaceArea = Values.droneSurfaceArea*0.0001
     minimalSurfaceAreaCoefficient = Values.minimalSurfaceAreaCoefficient
     gravity = Values.gravity
     
@@ -49,16 +66,24 @@ def dronePhysics(deltaT):
     cameraMatrix = ac.ext_getCameraMatrix()
     upVector = [cameraMatrix[4], cameraMatrix[5], cameraMatrix[6]]
     thrustVector = upVector
+    angle = math.acos(dot(thrustVector,DroneState.velocity)/(mag(thrustVector)*mag(DroneState.velocity)))
+    inflowVelocity = mag(DroneState.velocity)*math.cos(angle)
 
-    DroneState.force[0] = -airDrag(Values.airDensity, DroneState.velocity[0], airDragCoefficient, droneSurfaceArea, minimalSurfaceAreaCoefficient, thrustVector, DroneState.velocity)
-    DroneState.force[1] = -airDrag(Values.airDensity, DroneState.velocity[1], airDragCoefficient, droneSurfaceArea, minimalSurfaceAreaCoefficient, thrustVector, DroneState.velocity)
-    DroneState.force[2] = -airDrag(Values.airDensity, DroneState.velocity[2], airDragCoefficient, droneSurfaceArea, minimalSurfaceAreaCoefficient, thrustVector, DroneState.velocity)
+    force = [
+        -airDrag(Values.airDensity, DroneState.velocity[0], airDragCoefficient, droneSurfaceArea, minimalSurfaceAreaCoefficient, angle),
+        -airDrag(Values.airDensity, DroneState.velocity[1], airDragCoefficient, droneSurfaceArea, minimalSurfaceAreaCoefficient, angle),
+        -airDrag(Values.airDensity, DroneState.velocity[2], airDragCoefficient, droneSurfaceArea, minimalSurfaceAreaCoefficient, angle)
+    ]
 
-    acceleration = [DroneState.force[0]/Values.droneMass, DroneState.force[1]/Values.droneMass, DroneState.force[2]/Values.droneMass]
+    acceleration = [
+        (throttleForce(Values.motorKv, Input.throttle, inflowVelocity)*thrustVector[0] + force[0])/(Values.droneMass/1000),
+        (throttleForce(Values.motorKv, Input.throttle, inflowVelocity)*thrustVector[1] + force[1])/(Values.droneMass/1000) - gravity,
+        (throttleForce(Values.motorKv, Input.throttle, inflowVelocity)*thrustVector[2] + force[2])/(Values.droneMass/1000)
+    ]
 
-    DroneState.velocity[0] += (thrustVector[0]*Input.throttle*Values.throttleAcceleration + acceleration[0]) * deltaT
-    DroneState.velocity[1] += (thrustVector[1]*Input.throttle*Values.throttleAcceleration + acceleration[1] - gravity) * deltaT
-    DroneState.velocity[2] += (thrustVector[2]*Input.throttle*Values.throttleAcceleration + acceleration[2]) * deltaT
+    DroneState.velocity[0] += acceleration[0] * deltaT
+    DroneState.velocity[1] += acceleration[1] * deltaT
+    DroneState.velocity[2] += acceleration[2] * deltaT
 
     DroneState.position[0] += DroneState.velocity[0]*deltaT
     DroneState.position[1] += DroneState.velocity[1]*deltaT

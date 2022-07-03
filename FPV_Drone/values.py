@@ -1,5 +1,6 @@
 import ac
 import configparser
+import math
 import os 
 
 config = configparser.ConfigParser()
@@ -28,6 +29,7 @@ class Values:
     invertPitch = config.getint("FPV input", "invertPitch")
     invertYaw = config.getint("FPV input", "invertYaw")
     invertRoll = config.getint("FPV input", "invertRoll")
+    linearAcceleration = config.getint("FPV input", "linearAcceleration")
     pitchRate = config.getint("FPV Betaflight rates", "pitchRate")
     pitchSuper = config.getint("FPV Betaflight rates", "pitchSuper")
     pitchExpo = config.getint("FPV Betaflight rates", "pitchExpo")
@@ -37,7 +39,10 @@ class Values:
     rollRate = config.getint("FPV Betaflight rates", "rollRate")
     rollSuper = config.getint("FPV Betaflight rates", "rollSuper")
     rollExpo = config.getint("FPV Betaflight rates", "rollExpo")
-    throttleAcceleration = config.getint("FPV settings", "throttleAcceleration")
+    batteryCells = math.floor(config.getfloat("FPV settings", "batteryCells"))
+    motorKv = config.getint("FPV settings", "motorKv")
+    propDiameter = config.getfloat("FPV settings", "propDiameter")
+    propPitch = config.getfloat("FPV settings", "propPitch")
     cameraAngle = config.getint("FPV settings", "cameraAngle")
     cameraFov = config.getint("FPV settings", "cameraFov")
     droneMass = config.getint("FPV settings", "droneMass")
@@ -57,9 +62,18 @@ class Values:
     def changeInputDevice(value): 
         Values.inputDevice = value
         config.set("General input", "inputDevice", str(value))
-    def changeThrottleAcceleration(value): 
-        Values.throttleAcceleration = value
-        config.set("FPV settings", "throttleAcceleration", str(value))
+    def changeBatteryCells(value): 
+        Values.batteryCells = value
+        config.set("FPV settings", "batteryCells", str(value))
+    def changeMotorKv(value): 
+        Values.motorKv = value
+        config.set("FPV settings", "motorKv", str(value))
+    def changePropDiameter(value): 
+        Values.propDiameter = value/10
+        config.set("FPV settings", "propDiameter", str(value/10))
+    def changePropPitch(value): 
+        Values.propPitch = value/10
+        config.set("FPV settings", "propPitch", str(value/10))
     def changePitchRate(value): 
         Values.pitchRate = value
         config.set("FPV Betaflight rates", "pitchRate", str(value))
@@ -132,7 +146,10 @@ class Values:
         Values.rollRate = Values.removeComments(defaultConfig.get("FPV Betaflight rates", "rollRate"), "int")
         Values.rollSuper = Values.removeComments(defaultConfig.get("FPV Betaflight rates", "rollSuper"), "int")
         Values.rollExpo = Values.removeComments(defaultConfig.get("FPV Betaflight rates", "rollExpo"), "int")
-        Values.throttleAcceleration = Values.removeComments(defaultConfig.get("FPV settings", "throttleAcceleration"), "int")
+        Values.batteryCells = math.floor(Values.removeComments(defaultConfig.get("FPV settings", "batteryCells"), "float"))
+        Values.motorKv = Values.removeComments(defaultConfig.get("FPV settings", "motorKv"), "int")
+        Values.propDiameter = Values.removeComments(defaultConfig.get("FPV settings", "propDiameter"), "float")
+        Values.propPitch = Values.removeComments(defaultConfig.get("FPV settings", "propPitch"), "float")
         Values.cameraAngle = Values.removeComments(defaultConfig.get("FPV settings", "cameraAngle"), "int")
         Values.cameraFov = Values.removeComments(defaultConfig.get("FPV settings", "cameraFov"), "int")
         Values.droneMass = Values.removeComments(defaultConfig.get("FPV settings", "droneMass"), "int")

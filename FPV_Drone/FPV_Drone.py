@@ -3,16 +3,26 @@ import values
 from values import AppState, Values
 import controller
 import drone
+import math
 from drone import DroneState
 
 def console(*args):
   string = ""
   for arg in args:
     if type(arg) == float:
-      string += str("{:.2f}".format(arg))
+      string += str("{:.2f}".format(arg)) + " "
     else:
       string += str(arg) + " "
   ac.console(string)
+
+def log(*args):
+  string = ""
+  for arg in args:
+    if type(arg) == float:
+      string += str("{:.2f}".format(arg)) + " "
+    else:
+      string += str(arg) + " "
+  ac.log(string)
 
 def addSlider(label, app, pos, size, value, range, onChangeFunction):
   slider = ac.addSpinner(app,label)
@@ -66,24 +76,27 @@ class UIElements:
     UIElements.onOffButton = addButton("On/Off", app, [10, 50], [80, 20], onOffFunction)
     UIElements.modeSlider = addSlider("3D/Acro mode", app, [100, 50], [80,20], 1 if Values.mode=="acro" else 0, [0,1], Values.changeMode)
     UIElements.inputSlider = addSlider("Input device", app, [190, 50], [80,20], Values.inputDevice, [0,9], Values.changeInputDevice)
-    UIElements.throttleAccelerationSlider = addSlider("Throttle accel", app, [10, 95], [80,20], Values.throttleAcceleration, [0,100], Values.changeThrottleAcceleration)
+    UIElements.batteryCellsSlider = addSlider("Battery cells", app, [10, 95], [80,20], math.floor(Values.batteryCells), [3,6], Values.changeBatteryCells)
     UIElements.airDragSlider = addSlider("Air drag", app, [100, 95], [80,20], Values.airDrag, [0,100], Values.changeAirDrag)
-    UIElements.droneMassSlider = addSlider("Drone mass", app, [190, 95], [80,20], Values.droneMass, [1,5000], Values.changeDroneMass)
-    UIElements.droneSurfaceAreaSlider = addSlider("SurfArea", app, [10, 140], [80,20], Values.droneSurfaceArea, [0,500], Values.changeDroneSurfaceArea)
-    UIElements.minimalSurfaceAreaCoefficientSlider = addSlider("MinSurfAreaCoeff", app, [100, 140], [80,20], Values.minimalSurfaceAreaCoefficient*100, [0,100], Values.changeMinimalSurfaceAreaCoefficient)
-    UIElements.gravitySlider = addSlider("Gravity", app, [190, 140], [80,20], Values.gravity*100, [-3000,3000], Values.changeGravity)
-    UIElements.cameraAngleSlider = addSlider("Camera angle", app, [10, 185], [80, 20], Values.cameraAngle, [0,60], Values.changeCameraAngle)
-    UIElements.cameraFovSlider = addSlider("Camera fov", app, [100, 185], [80,20], Values.cameraFov, [10,150], Values.changeCameraFov)
-    UIElements.groundLevelSlider = addSlider("Ground level", app, [190, 185], [80,20], Values.groundLevel, [-1000,1000], Values.changeGroundLevel)
-    UIElements.pitchRateSlider = addSlider("Pitch rate", app, [10, 230], [80,20], Values.pitchRate, [0,300], Values.changePitchRate)
-    UIElements.pitchSuperSlider = addSlider("Pitch super", app, [10, 275], [80,20], Values.pitchSuper, [0,99], Values.changePitchSuper)
-    UIElements.pitchExpoSlider = addSlider("Pitch expo", app, [10, 320], [80,20], Values.pitchExpo, [0,100], Values.changePitchExpo)
-    UIElements.yawRateSlider = addSlider("Yaw rate", app, [100, 230], [80,20], Values.yawRate, [0,300], Values.changeYawRate)
-    UIElements.yawSuperSlider = addSlider("Yaw super", app, [100, 275], [80,20], Values.yawSuper, [0,99], Values.changeYawSuper)
-    UIElements.yawExpoSlider = addSlider("Yaw expo", app, [100, 320], [80,20], Values.yawExpo, [0,100], Values.changeYawExpo)
-    UIElements.rollRateSlider = addSlider("Roll rate", app, [190, 230], [80,20], Values.rollRate, [0,300], Values.changeRollRate)
-    UIElements.rollSuperSlider = addSlider("Roll super", app, [190, 275], [80,20], Values.rollSuper, [0,99], Values.changeRollSuper)
-    UIElements.rollExpoSlider = addSlider("Roll expo", app, [190, 320], [80,20], Values.rollExpo, [0,100], Values.changeRollExpo)
+    UIElements.droneMassSlider = addSlider("Drone mass", app, [190, 95], [80,20], Values.droneMass, [1,2000], Values.changeDroneMass)
+    UIElements.motorKvSlider = addSlider("Motor KV", app, [10, 140], [80,20], Values.motorKv, [1000,3000], Values.changeMotorKv)
+    UIElements.propDiameterSlider = addSlider("Prop diameter", app, [100, 140], [80,20], Values.propDiameter*10, [30,60], Values.changePropDiameter)
+    UIElements.propPitchSlider = addSlider("Prop pitch", app, [190, 140], [80,20], Values.propPitch*10, [20,60], Values.changePropPitch)
+    UIElements.droneSurfaceAreaSlider = addSlider("SurfArea", app, [10, 185], [80,20], Values.droneSurfaceArea, [0,500], Values.changeDroneSurfaceArea)
+    UIElements.minimalSurfaceAreaCoefficientSlider = addSlider("MinSurfAreaCoeff", app, [100, 185], [80,20], Values.minimalSurfaceAreaCoefficient*100, [0,100], Values.changeMinimalSurfaceAreaCoefficient)
+    UIElements.gravitySlider = addSlider("Gravity", app, [190, 185], [80,20], Values.gravity*100, [-3000,3000], Values.changeGravity)
+    UIElements.cameraAngleSlider = addSlider("Camera angle", app, [10, 230], [80, 20], Values.cameraAngle, [0,60], Values.changeCameraAngle)
+    UIElements.cameraFovSlider = addSlider("Camera fov", app, [100, 230], [80,20], Values.cameraFov, [10,150], Values.changeCameraFov)
+    UIElements.groundLevelSlider = addSlider("Ground level", app, [190, 230], [80,20], Values.groundLevel, [-1000,1000], Values.changeGroundLevel)
+    UIElements.pitchRateSlider = addSlider("Pitch rate", app, [10, 275], [80,20], Values.pitchRate, [0,300], Values.changePitchRate)
+    UIElements.pitchSuperSlider = addSlider("Pitch super", app, [10, 320], [80,20], Values.pitchSuper, [0,99], Values.changePitchSuper)
+    UIElements.pitchExpoSlider = addSlider("Pitch expo", app, [10, 365], [80,20], Values.pitchExpo, [0,100], Values.changePitchExpo)
+    UIElements.yawRateSlider = addSlider("Yaw rate", app, [100, 275], [80,20], Values.yawRate, [0,300], Values.changeYawRate)
+    UIElements.yawSuperSlider = addSlider("Yaw super", app, [100, 320], [80,20], Values.yawSuper, [0,99], Values.changeYawSuper)
+    UIElements.yawExpoSlider = addSlider("Yaw expo", app, [100, 365], [80,20], Values.yawExpo, [0,100], Values.changeYawExpo)
+    UIElements.rollRateSlider = addSlider("Roll rate", app, [190, 275], [80,20], Values.rollRate, [0,300], Values.changeRollRate)
+    UIElements.rollSuperSlider = addSlider("Roll super", app, [190, 320], [80,20], Values.rollSuper, [0,99], Values.changeRollSuper)
+    UIElements.rollExpoSlider = addSlider("Roll expo", app, [190, 365], [80,20], Values.rollExpo, [0,100], Values.changeRollExpo)
     UIElements.droneLabel = addLabel("Drone is off", app, [15, 31], [0,0], 13)
     UIElements.asleepLabel = addLabel("", app, [10, 7], [0,0])
 
@@ -92,7 +105,7 @@ def acMain(ac_version):
   app = ac.newApp("FPV Drone")
   ac.setIconPosition(app, 120, 0)
   ac.setTitle(app, "")
-  ac.setSize(app, 280, 350)
+  ac.setSize(app, 280, 395)
 
   UIElements.draw(app)  
 
@@ -133,9 +146,12 @@ def resetSettings(*args):
     AppState.confirmReset = False
     ac.setText(UIElements.resetButton, "Reset settings")
     Values.resetValues()
-    ac.setValue(UIElements.throttleAccelerationSlider, Values.throttleAcceleration)
+    ac.setValue(UIElements.batteryCellsSlider, math.floor(Values.batteryCells))
     ac.setValue(UIElements.airDragSlider, Values.airDrag)
     ac.setValue(UIElements.droneMassSlider, Values.droneMass)
+    ac.setValue(UIElements.motorKvSlider, Values.motorKv)
+    ac.setValue(UIElements.propDiameterSlider, Values.propDiameter*10)
+    ac.setValue(UIElements.propPitchSlider, Values.propPitch*10)
     ac.setValue(UIElements.droneSurfaceAreaSlider, Values.droneSurfaceArea)
     ac.setValue(UIElements.minimalSurfaceAreaCoefficientSlider, Values.minimalSurfaceAreaCoefficient*100)
     ac.setValue(UIElements.gravitySlider, Values.gravity*100)

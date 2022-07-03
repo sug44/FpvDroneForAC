@@ -6,8 +6,8 @@ Go to Content Manager > Settings > Assetto Corsa > Apps and check the "Enable Py
 Go to Fpv Drone settings at Content Manager > Settings > Apps > FPV Drone and set each input axis with the axis on your controller.
 You can see your controller axes in Content Manager > Settings > Assetto Corsa > Controls, and on the right will be your controllers.
 Some axes on your controller might be inverted, if so you can check the "invert *axis*" checkmark in the Fpv Drone settings.
+If you use a radio controller, change the "mode" to "Acro"
 Default values are for dualshock 4 gamepad.
-If you use a gamepad, i recommend setting "mode" to "3d".
 Input axes for Dualshock 4: Throttle = 2, Pitch = 6, Yaw = 1, Roll = 3, Invert throttle, Invert pitch.
 Input axes for Xbox 360: Throttle = 2, Pitch = 5, Yaw = 1, Roll = 4, Invert throttle, Invert pitch.
 If you have multiple controllers, you can change the "Input device" in the Fpv Drone settings.
