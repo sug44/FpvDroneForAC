@@ -5,6 +5,8 @@ To install Custom Shaders Patch go to Content Manager > Settings > Custom Shader
 Go to Content Manager > Settings > Assetto Corsa > Apps and check the "Enable Python apps" checkbox and the "FPV Drone" checkbox below.
 Go to Fpv Drone settings at Content Manager > Settings > Apps > FPV Drone and set each input axis with the axis on your controller.
 You can see your controller axes in Content Manager > Settings > Assetto Corsa > Controls, and on the right will be your controllers.
+While you're here check if your throttle range of motion is 0 to 1 and if it is check the "Throttle range of motion is 0 to 1" checkbox in the Fpv Drone settings.
+You can tell that your throttle range of motion is 0 to 1 by checking if your throttle axis value doesnt move all the way up or down.
 Some axes on your controller might be inverted, if so you can check the "invert *axis*" checkmark in the Fpv Drone settings.
 If you use a radio controller, change the "mode" to "Acro"
 Default values are for dualshock 4 gamepad.
@@ -16,6 +18,7 @@ How to use:
 When you are in game, you need to enable the app window by moving your mouse to the right of the screen and clicking on "FPV Drone" app
 You can enable/disable the drone by clicking the "On/Off" button. Or you can press F7 to get into the drone camera and F1 to switch back.
 By switching with F1/F7 you can keep the position of the drone. Pressing Alt+F7 has the same affect as clicking the "On/Off" button.
+The drone has no collision. You can adjust simulated ground level in the app with the "Ground level" slider.
 You can change any value except Fpv input values and air density in the app.
 If you want your own default values, you can set them in the assettocorsa/apps/python/FPV_Drone/config_defaults.ini file.
 

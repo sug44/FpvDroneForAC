@@ -2,7 +2,6 @@ import ac
 import math
 from values import AppState, Values
 from controller import Input
-# import FPV_Drone
 
 def dot(v1, v2):
     return v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2]
@@ -43,6 +42,7 @@ def throttleForce(motorKv, throttle, inflowVelocity):
     
 def startDrone(startPos):
     DroneState.position = [startPos[0], startPos[1], startPos[2]]
+    Values.groundLevel = min(startPos[1]-ac.ext_getCameraPositionRelativeToCar()[1], Values.groundLevel)
     DroneState.velocity = [0.01, 10, 0]
     ac.setCameraMode(6)
     ac.ext_setCameraFov(float(Values.cameraFov))
@@ -53,7 +53,7 @@ def dronePhysics(deltaT):
     droneSurfaceArea = Values.droneSurfaceArea*0.0001
     minimalSurfaceAreaCoefficient = Values.minimalSurfaceAreaCoefficient
     gravity = Values.gravity
-    
+
     if ac.getCameraMode() != 6:
         DroneState.isAsleep = True
         return

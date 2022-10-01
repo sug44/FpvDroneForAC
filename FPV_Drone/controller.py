@@ -18,6 +18,8 @@ def betaflightRates(x, a, b, c): #a-rate, b-super, c-expo
 def getInput():
     Input.throttle = ac.ext_getJoystickAxisValue(Values.inputDevice, Values.throttleAxis)
     if Values.invertThrottle: Input.throttle *= -1
+    if Values.throttleRangeOfMotionIs0to1:
+        Input.throttle = Input.throttle*2-1
     if Values.mode == "acro":
         Input.throttle = (Input.throttle+1)/2
     Input.pitch = betaflightRates(ac.ext_getJoystickAxisValue(Values.inputDevice, Values.pitchAxis), Values.pitchRate/100, Values.pitchSuper/100, Values.pitchExpo/100)
