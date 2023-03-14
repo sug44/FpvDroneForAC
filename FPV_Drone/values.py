@@ -20,7 +20,6 @@ class AppState:
 
 class Values:
     inputDevice = config.getint("General input", "inputDevice")
-    throttleRangeOfMotionIs0to1 = config.getint("General input", "throttleRangeOfMotionIs0To1")
     throttleAxis = config.getint("FPV input", "throttleAxis")-1
     pitchAxis = config.getint("FPV input", "pitchAxis")-1
     yawAxis = config.getint("FPV input", "yawAxis")-1
@@ -30,6 +29,10 @@ class Values:
     invertPitch = config.getint("FPV input", "invertPitch")
     invertYaw = config.getint("FPV input", "invertYaw")
     invertRoll = config.getint("FPV input", "invertRoll")
+    throttleRangeOfMotionIs0to1 = config.getint("FPV input", "throttleRangeOfMotionIs0To1")
+    pitchRangeOfMotionIs0to1 = config.getint("FPV input", "pitchRangeOfMotionIs0To1")
+    yawRangeOfMotionIs0to1 = config.getint("FPV input", "yawRangeOfMotionIs0To1")
+    rollRangeOfMotionIs0to1 = config.getint("FPV input", "rollRangeOfMotionIs0To1")
     linearAcceleration = config.getint("Other", "linearAcceleration")
     pitchRate = config.getint("FPV Betaflight rates", "pitchRate")
     pitchSuper = config.getint("FPV Betaflight rates", "pitchSuper")
