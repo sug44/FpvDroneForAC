@@ -1,5 +1,5 @@
 ---@diagnostic disable: param-type-mismatch
-local directory = ac.getFolder(ac.FolderID.ACApps) .. "/lua/FpvDrone"
+local directory = ac.dirname()
 require("settings")
 require("input")
 require("drone")

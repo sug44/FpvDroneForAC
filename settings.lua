@@ -1,4 +1,4 @@
-local directory = ac.getFolder(ac.FolderID.ACApps) .. "/lua/FpvDrone"
+local directory = ac.dirname()
 SSettings = {}
 SSettings.config = ac.INIConfig.load(directory .. "/config.ini", ac.INIFormat.Extended)
 
