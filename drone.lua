@@ -2,11 +2,11 @@ require("input")
 require("settings")
 
 local function betaflightRates(x, a, b, c) -- a-rate, b-super, c-expo
-  local p = 1 / (1 - (math.abs(x) * b))
-  local q = (x ^ 4 * c) + x * (1 - c)
-  local r = 200 * q * a
-  local t = r * p
-  return t
+    local p = 1 / (1 - (math.abs(x) * b))
+    local q = (x ^ 4 * c) + math.abs(x) * (1 - c)
+    local r = 200 * q * a
+    local t = r * p * (x < 0 and -1 or 1)
+    return t
 end
 
 local function thrust(isLinearAcceleration, airDensity, propDiameter, propPitch, motorKv, batteryCells, throttle,
