@@ -50,7 +50,7 @@ local function updatePresets()
     end)
 end
 updatePresets()
-ac.onFolderChanged(directory .. "/presets", "", false, updatePresets)
+ac.onFolderChanged(directory .. "/presets", nil, false, updatePresets)
 
 local function slider(label, section, valueName, min, max, multiplier, decimals, units, description, fn)
     local value, changed = ui.slider("##" .. valueName, (section and Settings[valueName] or valueName) * multiplier, min, max, label .. ": %." .. decimals .. "f " .. units)
