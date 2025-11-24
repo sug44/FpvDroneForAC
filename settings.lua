@@ -2,6 +2,7 @@ local M = {
     path = ac.dirname().."/settings/settings.json",
     presetsPath = ac.dirname().."/settings/presets/",
     presets = {},
+    notDeletablePresetsMap = { defaultNoInput = true, dualshock4 = true, xbox360 = true },
     values = {},
 }
 
@@ -26,6 +27,11 @@ function M:savePreset(presetName)
     io.save(self.presetsPath .. presetName .. ".json", JSON.stringify(self.values), true)
 end
 
+function M:deletePreset(presetName)
+    if not self.notDeletablePresetsMap[presetName] then
+        io.deleteFile(self.presetsPath..presetName..".json")
+    end
+end
 
 function M:updatePresets()
     table.clear(self.presets)

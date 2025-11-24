@@ -291,8 +291,18 @@ function script.sFpvDrone()
 
     ui.setNextItemWidth(148)
     ui.combo("##Presets", "Load preset", function ()
-        for _, presetName in pairs(Settings.presets) do
-            if ui.selectable(presetName) then Settings:loadPreset(presetName) end
+        for _, presetName in ipairs(Settings.presets) do
+            local defaultPreset = Settings.notDeletablePresetsMap[presetName]
+            if ui.selectable(presetName, nil, ui.SelectableFlags.None, defaultPreset and vec2(128, 20) or vec2(108, 20)) then
+                Settings:loadPreset(presetName)
+            end
+            if not defaultPreset then
+                ui.sameLine(0, 4)
+                if ui.button("##deletePresetButton"..presetName, vec2(20, 20)) then
+                    Settings:deletePreset(presetName)
+                end
+                ui.addIcon(ui.Icons.Delete, vec2(13, 13), vec2(0.5, 0.5), nil, vec2(0, 0))
+            end
         end
     end)
     ui.sameLine(0, 4)
