@@ -1,8 +1,6 @@
-require("settings")
+Settings = require("settings")
 require("input")
 require("drone")
-
-local directory = ac.dirname()
 
 ButtonStates = {
     toggleSleepButton = {},
@@ -33,23 +31,13 @@ function script.update()
     if ButtonStates.toggleDroneButton.pressed then Drone:toggle() end
 end
 
-local presets = {}
-local function updatePresets()
-    table.clear(presets)
-    io.scanDir(directory .. "/presets", "*.ini", function (fileName)
-        table.insert(presets, fileName:split(".ini")[1])
-        return nil
-    end)
-end
-updatePresets()
-ac.onFolderChanged(directory .. "/presets", nil, false, updatePresets)
 
 local function slider(label, section, valueName, min, max, multiplier, decimals, units, description, fn)
     local value, changed = ui.slider("##" .. valueName, (section and Settings[valueName] or valueName) * multiplier, min, max, label .. ": %." .. decimals .. "f " .. units)
     if ui.itemHovered() and not ui.itemActive() and description then ui.setTooltip(description) end
     if changed then
         if fn then value = fn(value) end
-        if section and valueName then Settings:set(section, valueName, math.round(value, decimals) / multiplier) end
+        if section and valueName then Settings[valueName] = math.round(value, decimals) / multiplier end
     end
     return value, changed
 end
@@ -74,14 +62,14 @@ local function controllerAxis(label, key)
     if listeningAxis[key] then
         for i = 0, ac.getJoystickAxisCount(Settings.inputDevice) do
             if math.abs(axisStartValues[i + 1] - ac.getJoystickAxisValue(Settings.inputDevice, i)) > 0.3 then
-                Settings:set("Input", key, i)
+                Settings[key] = i
                 listeningAxis[key] = false
                 break
             end
         end
     end
     ui.sameLine(0, 4)
-    if ui.button("##" .. key, vec2(22, 22)) then Settings:set("Input", key, -1) end
+    if ui.button("##" .. key, vec2(22, 22)) then Settings[key] = -1 end
     ui.addIcon(ui.Icons.Cancel, vec2(10, 10), vec2(0.5, 0.5), nil, vec2(0, 0))
 end
 
@@ -105,21 +93,21 @@ local function keybind(label, key)
     if listeningKey[key] then
         for _, i in pairs(ui.KeyIndex) do
             if ui.keyboardButtonDown(i) then
-                Settings:set("Keybinds", key, i)
+                Settings[key] = i
                 listeningKey[key] = false
                 break
             end
         end
         for i = 0, ac.getJoystickButtonsCount(Settings.inputDevice), 1 do
             if ac.isJoystickButtonPressed(Settings.inputDevice, i) then
-                Settings:set("Keybinds", key, 1000 + i)
+                Settings[key] = 1000 + i
                 listeningKey[key] = false
                 break
             end
         end
     end
     ui.sameLine(0, 4)
-    if ui.button("##" .. key, vec2(22, 22)) then Settings:set("Keybinds", key, -1) end
+    if ui.button("##" .. key, vec2(22, 22)) then Settings[key] = -1 end
     ui.addIcon(ui.Icons.Cancel, vec2(10, 10), vec2(0.5, 0.5), nil, vec2(0, 0))
 end
 
@@ -142,7 +130,7 @@ local function fpvDroneTab()
         "Coefficient by which surface area of the drone is multiplied when its going parallel to the airflow")
     ui.columns(1)
     if ui.checkbox("Linear acceleration", Settings.linearAcceleration) then
-        Settings:set("FPV Drone", "linearAcceleration", not Settings.linearAcceleration)
+        Settings.linearAcceleration = not Settings.linearAcceleration
     end
     if ui.itemHovered() then ui.setTooltip("Make thrust linear to throttle. Motor KV is multiplier") end
 end
@@ -185,7 +173,7 @@ local time = nil
 local function stuffTab()
     ui.columns(2, false)
     if ui.checkbox("Jitter Compensation", Settings.jitterCompensation) then
-        Settings:set("Lag compensation", "jitterCompensation", not Settings.jitterCompensation)
+        Settings.jitterCompensation = not Settings.jitterCompensation
         Drone.jitters = vec3()
     end
     if ui.itemHovered() then ui.setTooltip([[
@@ -230,13 +218,13 @@ local function inputTab()
         for i = 0, ac.getJoystickCount()-1 do
             local name = ac.getJoystickName(i)
             if name and ui.selectable(name) then
-                Settings:set("Input", "inputDeviceName", ac.getJoystickName(i))
+                Settings.inputDeviceName = ac.getJoystickName(i)
                 Settings.inputDevice = i
             end
         end
     end)
     ui.nextColumn()
-    if ui.checkbox("3D Mode", Settings.mode3d) then Settings:set("Input", "mode3d", not Settings.mode3d) end
+    if ui.checkbox("3D Mode", Settings.mode3d) then Settings.mode3d = not Settings.mode3d end
     if ui.itemHovered() then ui.setTooltip("Lower half of throttle range will spin the motors backwards. Recommended for game controllers") end
     ui.separator()
 
@@ -245,7 +233,7 @@ local function inputTab()
     ui.setNextItemWidth(50)
     controllerAxis("Throttle axis:", "throttleAxis")
     if ui.checkbox("Invert throttle", Settings.invertThrottle) then
-        Settings:set("Input", "invertThrottle", not Settings.invertThrottle)
+        Settings.invertThrottle = not Settings.invertThrottle
     end
     slider("Throttle from", "Input", "throttleFrom", -1, 1, 1, 1, "", nil, function (value) return math.min(value, Settings.throttleTo - 0.1) end)
     slider("Throttle to", "Input", "throttleTo", -1, 1, 1, 1, "", nil, function (value) return math.max(value, Settings.throttleFrom + 0.1) end)
@@ -254,7 +242,7 @@ local function inputTab()
     ui.pushItemWidth(ui.windowWidth() / 4 - 15)
     ui.setNextItemWidth(50)
     controllerAxis("Roll axis:", "rollAxis")
-    if ui.checkbox("Invert roll", Settings.invertRoll) then Settings:set("Input", "invertRoll", not Settings.invertRoll) end
+    if ui.checkbox("Invert roll", Settings.invertRoll) then Settings.invertRoll = not Settings.invertRoll end
     slider("Roll from", "Input", "rollFrom", -1, 1, 1, 1, "", nil, function (value) return math.min(value, Settings.rollTo - 0.1) end)
     slider("Roll to", "Input", "rollTo", -1, 1, 1, 1, "", nil, function (value) return math.max(value, Settings.rollFrom + 0.1) end)
     ui.nextColumn()
@@ -263,7 +251,7 @@ local function inputTab()
     ui.setNextItemWidth(50)
     controllerAxis("Pitch axis:", "pitchAxis")
     if ui.checkbox("Invert pitch", Settings.invertPitch) then
-        Settings:set("Input", "invertPitch", not Settings.invertPitch)
+        Settings.invertPitch = not Settings.invertPitch
     end
     slider("Pitch from", "Input", "pitchFrom", -1, 1, 1, 1, "", nil, function (value) return math.min(value, Settings.pitchTo - 0.1) end)
     slider("Pitch to", "Input", "pitchTo", -1, 1, 1, 1, "", nil, function (value) return math.max(value, Settings.pitchFrom + 0.1) end)
@@ -272,7 +260,7 @@ local function inputTab()
     ui.pushItemWidth(ui.windowWidth() / 4 - 15)
     ui.setNextItemWidth(50)
     controllerAxis("Yaw axis:", "yawAxis")
-    if ui.checkbox("Invert yaw", Settings.invertYaw) then Settings:set("Input", "invertYaw", not Settings.invertYaw) end
+    if ui.checkbox("Invert yaw", Settings.invertYaw) then Settings.invertYaw = not Settings.invertYaw end
     slider("Yaw from", "Input", "yawFrom", -1, 1, 1, 1, "", nil, function (value) return math.min(value, Settings.yawTo - 0.1) end)
     slider("Yaw to", "Input", "yawTo", -1, 1, 1, 1, "", nil, function (value) return math.max(value, Settings.yawFrom + 0.1) end)
     ui.columns(1)
@@ -303,12 +291,12 @@ function script.sFpvDrone()
 
     ui.setNextItemWidth(148)
     ui.combo("##Presets", "Load preset", function ()
-        for _, presetName in pairs(presets) do
-            if ui.selectable(presetName) then Settings:loadFrom(presetName) end
+        for _, presetName in pairs(Settings.presets) do
+            if ui.selectable(presetName) then Settings:loadPreset(presetName) end
         end
     end)
     ui.sameLine(0, 4)
-    if ui.button("##openPresetFolder", vec2(22, 22)) then os.openInExplorer(directory .. "/presets") end
+    if ui.button("##openPresetFolder", vec2(22, 22)) then os.openInExplorer(Settings.presetsPath) end
     if ui.itemHovered() then ui.setTooltip("Open presets folder") end
     ui.addIcon(ui.Icons.Folder, vec2(13, 13), vec2(0.5, 0.5), nil, vec2(0, 0))
 
@@ -316,7 +304,7 @@ function script.sFpvDrone()
     savePresetName = ui.inputText("Save preset", savePresetName, ui.InputTextFlags.Placeholder)
     ui.sameLine(0, 4)
     if ui.button("##savePresetBtn", vec2(22, 22)) then
-        Settings:saveTo(savePresetName)
+        Settings:savePreset(savePresetName)
         savePresetName = ""
     end
     if ui.itemHovered() then ui.setTooltip("Save preset as") end
@@ -351,21 +339,21 @@ function script.sFpvDroneInputDisplaySettings()
     ui.setNextItemWidth(150)
     local squareColorS = rgbm(tonumber(Settings.squareColor[1]), tonumber(Settings.squareColor[2]), tonumber(Settings.squareColor[3]), tonumber(Settings.squareColor[4]))
     if ui.colorPicker("##squareColor", squareColorS) then
-        Settings:set("App", "squareColor", { [1] = squareColorS.r, [2] = squareColorS.g, [3] = squareColorS.b, [4] = squareColorS.mult })
+        Settings.squareColor = { squareColorS.r, squareColorS.g, squareColorS.b, squareColorS.mult }
     end
     local squareOpacity, soChanged = ui.slider('##squareOpacity', squareColorS.mult, 0, 1, "Square opacity: %.2f ")
     if soChanged then
-        Settings:set("App", "squareColor", { [1] = squareColorS.r, [2] = squareColorS.g, [3] = squareColorS.b, [4] = squareOpacity })
+        Settings.squareColor = { squareColorS.r, squareColorS.g, squareColorS.b, squareOpacity }
     end
     slider("Circle radius", "App", "circleRadius", 1, 100, 1, 0, "px")
     ui.text("Circle color")
     ui.setNextItemWidth(150)
     local circleColorS = rgbm(tonumber(Settings.circleColor[1]), tonumber(Settings.circleColor[2]), tonumber(Settings.circleColor[3]), tonumber(Settings.circleColor[4]))
     if ui.colorPicker("##circleColor", circleColorS) then
-        Settings:set("App", "circleColor", { [1] = circleColorS.r, [2] = circleColorS.g, [3] = circleColorS.b, [4] = circleColorS.mult })
+        Settings.circleColor = { circleColorS.r, circleColorS.g, circleColorS.b, circleColorS.mult }
     end
     local circleOpacity, coChanged = ui.slider('##circleOpacity', circleColorS.mult, 0, 1, "Circle opacity: %.2f ")
     if coChanged then
-        Settings:set("App", "circleColor", { [1] = circleColorS.r, [2] = circleColorS.g, [3] = circleColorS.b, [4] = circleOpacity })
+        Settings.circleColor = { circleColorS.r, circleColorS.g, circleColorS.b, circleOpacity }
     end
 end
