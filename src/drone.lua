@@ -48,7 +48,7 @@ local function getClosestCar(toPosition)
     return ac.getCar(closestCarIndex)
 end
 
-Drone = {
+local M = {
     previousCameraMode = nil,
     active = false,
     sleep = false,
@@ -60,7 +60,7 @@ Drone = {
     jitter = vec3(),
 }
 
-function Drone:toggle()
+function M:toggle()
     if not self.active then
         self.position = ac.getCameraPosition()
         local cameraAngleQuat = quat.fromAngleAxis(-math.rad(Settings.cameraAngle), ac.getCameraSide())
@@ -83,11 +83,15 @@ function Drone:toggle()
     end
 end
 
-function Drone:toggleSleep()
+function M:toggleSleep()
     self.sleep = not self.sleep
 end
 
-function Drone:physics(dt)
+function M:update(dt)
+    Input:update()
+    if Input.toggleSleepButton.pressed then self:toggleSleep() end
+    if Input.toggleDroneButton.pressed then self:toggle() end
+
     if not self.active or self.sleep then return end
 
     dt = dt * Settings.time
@@ -104,7 +108,7 @@ function Drone:physics(dt)
         Settings.mode3d and Input.throttle or (Input.throttle + 1) / 2, inflowVelocity))
 
     local airDragForce = vec3()
-    if not ButtonStates.disableAirDragButton.down then
+    if not Input.disableAirDragButton.down then
         airDragForce = airDragForceFn(1.2 * Settings.airDensity, self.velocity, Settings.airDrag,
             Settings.droneSurfaceArea, Settings.minimalSurfaceAreaCoefficient, inflowCoefficient)
     end
@@ -159,7 +163,7 @@ function Drone:physics(dt)
 
     if self.jitter:length() > 0.1 then self.jitter:scale(1-0.1/self.jitter:length()*dt) end
 
-    if ButtonStates.savePositionButton.pressed then
+    if Input.savePositionButton.pressed then
         self.savedState = {
             position = self.position:clone(),
             look = self.rotation.look:clone(),
@@ -167,7 +171,7 @@ function Drone:physics(dt)
             velocity = self.velocity:clone(),
         }
     end
-    if ButtonStates.teleportToPositionButton.pressed and self.savedState then
+    if Input.teleportToPositionButton.pressed and self.savedState then
         self.position = self.savedState.position:clone()
         self.rotation.look = self.savedState.look:clone()
         self.rotation.up = self.savedState.up:clone()
@@ -175,7 +179,7 @@ function Drone:physics(dt)
     end
 end
 
-function Drone:updateJitter()
+function M:updateJitter()
     local closestCar = getClosestCar(self.position)
 
     if closestCar and self.previousJitterClosestCar and closestCar.index == self.previousJitterClosestCar.index and
@@ -197,3 +201,5 @@ function Drone:updateJitter()
         index = closestCar.index
     }
 end
+
+return M
