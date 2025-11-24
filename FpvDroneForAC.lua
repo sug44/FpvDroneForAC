@@ -144,6 +144,7 @@ local function fpvDroneTab()
     if ui.checkbox("Linear acceleration", Settings.linearAcceleration) then
         Settings:set("FPV Drone", "linearAcceleration", not Settings.linearAcceleration)
     end
+    if ui.itemHovered() then ui.setTooltip("Make thrust linear to throttle. Motor KV is multiplier") end
 end
 
 local function ratesTab()
@@ -176,6 +177,7 @@ local function physicsTab()
     ui.pushItemWidth(ui.windowWidth() / 2 - 25)
     slider("Gravity", "Physics", "gravity", -1, 3, 1, 1, "")
     slider("Ground height", "Physics", "groundLevel", -5000, 5000, 1, 0, "")
+    if ui.itemHovered() then ui.setTooltip("Height of simulated ground. Prevents the drone from falling under the map forever") end
     ui.columns(1)
 end
 
@@ -186,7 +188,11 @@ local function stuffTab()
         Settings:set("Lag compensation", "jitterCompensation", not Settings.jitterCompensation)
         Drone.jitters = vec3()
     end
-    if ui.itemHovered() then ui.setTooltip("Compensation for high frequency jitter of the closest car") end
+    if ui.itemHovered() then ui.setTooltip([[
+Compensation for high frequency jitter of the closest car.
+Car positions are updated every physics tick, but the drone is moved every frame.
+This creates a jitter effect, especially noticeable when flying close to cars.
+Jitter compensation jitters the drone with the car so the effect is not visible.]]) end
     ui.nextColumn()
     ui.nextColumn()
     ui.pushItemWidth(ui.windowWidth() / 2 - 25)
@@ -231,6 +237,7 @@ local function inputTab()
     end)
     ui.nextColumn()
     if ui.checkbox("3D Mode", Settings.mode3d) then Settings:set("Input", "mode3d", not Settings.mode3d) end
+    if ui.itemHovered() then ui.setTooltip("Lower half of throttle range will spin the motors backwards. Recommended for game controllers") end
     ui.separator()
 
     ui.columns(4, false)
