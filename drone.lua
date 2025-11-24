@@ -28,80 +28,73 @@ local function airDragForceFn(density, velocity, coefficient, area, minAreaCoeff
 end
 
 local function vectorAngle(vec1, vec2)
-    return math.acos(vec1:clone():dot(vec2:clone()) / (vec1:clone():length() * vec2:clone():length()))
+    local angle = math.acos(vec1:dot(vec2) / (vec1:length() * vec2:length()))
+    return angle == angle and angle or 0
+end
+
+local function getClosestCar(toPosition)
+    local closestCarIndex = 0
+    local minDistance = 1e9
+    for i = 0, ac.getSim().carsCount - 1 do
+        local car = ac.getCar(i)
+        if car and car.isActive then
+            local distanceToPosition = (car.position-toPosition):length()
+            if distanceToPosition < minDistance then
+                closestCarIndex = i
+                minDistance = distanceToPosition
+            end
+        end
+    end
+    return ac.getCar(closestCarIndex)
 end
 
 Drone = {
     previousCameraMode = nil,
-    changingCameraMode = false,
     active = false,
-    camera = nil,
-    transform = mat4x4.identity(),
+    sleep = false,
+    position = vec3(),
+    rotation = { look = vec3(), up = vec3() },
     velocity = vec3(),
-    sleepTransform = mat4x4.identity(),
-    savedTransform = mat4x4.identity(),
-    savedVelocity = vec3(),
-    prevClosestCar = nil,
+    savedState = nil,
+    previousJitterClosestCar = nil,
     jitter = vec3(),
-    jitters = vec3(),
 }
 
 function Drone:toggle()
     if not self.active then
-        if not self.changingCameraMode then -- sets near clip to a reasonable value for the drone. waits for 1 frame
-            self.previousCameraMode = ac.getSim().cameraMode
-            if ac.getSim().cameraClipNear > 0.1 then
-                ac.setCurrentCamera(ac.CameraMode.Cockpit)
-                self.changingCameraMode = true
-                return
-            end
-        else
-            self.changingCameraMode = false
-        end
+        self.position = ac.getCameraPosition()
+        local cameraAngleQuat = quat.fromAngleAxis(-math.rad(Settings.cameraAngle), ac.getCameraSide())
+        self.rotation.look = ac.getCameraForward():rotate(cameraAngleQuat)
+        self.rotation.up = ac.getCameraUp():rotate(cameraAngleQuat)
+        self.velocity = getClosestCar(self.position).velocity:clone():add(vec3(0, 10, 0))
+        self.jitter = vec3()
 
-        local error
-        self.camera, error = ac.grabCamera("Drone")
-        if error then
-            print(error)
-            return
-        end
-        self.transform = self.camera.transform:clone()
-        self.velocity = GetClosestCar().velocity:clone():add(vec3(0.01, 10, 0.01))
-        self.jitters = vec3()
+        -- couldnt find a way to change camera near clip distance,
+        -- so change camera mode to one with near clip distance I need.
+        -- also shadows look better in "drivable" camera mode
+        self.previousCameraMode = ac.getSim().cameraMode
+        ac.setCurrentCamera(ac.CameraMode.Drivable)
+
         self.active = true
+        self.sleep = false
     else
-        if self.camera and self.camera:active() then self.camera:dispose() end
         if self.previousCameraMode then ac.setCurrentCamera(self.previousCameraMode) end
         self.active = false
     end
 end
 
 function Drone:toggleSleep()
-    if self.active and self.camera then
-        if self.camera:active() then
-            self.sleepTransform = self.transform:clone()
-            self.camera:dispose()
-        else
-            self.camera = ac.grabCamera("Drone")
-            self.transform = self.sleepTransform:clone()
-        end
-    end
-end
-
-function Drone:toggleActiveDof()
-    Settings:set("Stuff", "activeDof", not Settings.activeDof)
-    if not Settings.activeDof and self.camera then
-        self.camera.dofDistance = self.camera.dofDistanceOriginal
-        self.camera.dofFactor = self.camera.dofFactorOriginal
-    end
+    self.sleep = not self.sleep
 end
 
 function Drone:physics(dt)
+    if not self.active or self.sleep then return end
+
     dt = dt * Settings.time
 
-    local sideVector = self.transform.side:clone()
-    local lookVector = self.transform.look:clone():rotate(quat.fromAngleAxis(-math.rad(Settings.cameraAngle), sideVector))
-    local upVector = self.transform.up:clone():rotate(quat.fromAngleAxis(-math.rad(Settings.cameraAngle), sideVector))
+    local sideVector = math.cross(self.rotation.look, self.rotation.up)
+    local lookVector = self.rotation.look
+    local upVector = self.rotation.up
 
     local inflowCoefficient = 1 - math.sin(vectorAngle(upVector:clone(), self.velocity:clone()))
     local inflowVelocity = self.velocity:length() * inflowCoefficient
@@ -120,26 +113,10 @@ function Drone:physics(dt)
     local acceleration = force / Settings.droneMass + vec3(0, -9.8 * Settings.gravity, 0)
     self.velocity:addScaled(acceleration, dt)
 
-    if Settings.jitterCompensation then
-        self.jitter, self.prevClosestCar = Jitter(self.prevClosestCar)
-        self.jitters:add(self.jitter)
-    else
-        self.jitter, self.prevClosestCar = vec3(), nil
-    end
+    self.position:addScaled(self.velocity, dt)
 
-    self.transform.position:addScaled(self.velocity, dt)
-
-    if ButtonStates.savePositionButton.pressed then
-        self.savedTransform = self.transform:clone()
-        self.savedVelocity = self.velocity:clone()
-    end
-    if ButtonStates.teleportToPositionButton.pressed then
-        self.transform = self.savedTransform:clone()
-        self.velocity = self.savedVelocity:clone()
-    end
-
-    if self.transform.position.y < Settings.groundLevel + 0.1 then
-        self.transform.position.y = Settings.groundLevel + 0.1
+    if self.position.y < Settings.groundLevel + 0.1 then
+        self.position.y = Settings.groundLevel + 0.1
         self.velocity.y = 0.01
     end
 
@@ -149,21 +126,74 @@ function Drone:physics(dt)
         yaw = math.rad(betaflightRates(Input.yaw, Settings.yawRate, Settings.yawSuper, Settings.yawExpo)) * dt
     }
 
-    self.transform:mulSelf(mat4x4.identity()
-        :mulSelf(mat4x4.translation(self.transform.position*-1))
-        :mulSelf(mat4x4.rotation(-rotation.pitch , sideVector))
-        :mulSelf(mat4x4.rotation(rotation.roll, lookVector))
-        :mulSelf(mat4x4.rotation(-rotation.yaw, upVector))
-        :mulSelf(mat4x4.translation(self.transform.position))
-    )
+    local rotationQuat =
+        quat.fromAngleAxis(-rotation.pitch, sideVector) *
+        quat.fromAngleAxis(rotation.roll, lookVector) *
+        quat.fromAngleAxis(-rotation.yaw, upVector)
 
-    self.camera.transform:set(self.transform:clone():mulSelf(mat4x4.translation(self.jitters)))
+    self.rotation.look:rotate(rotationQuat):normalize()
+    -- this is to make sure look and up are 90 degrees apart
+    sideVector:rotate(rotationQuat):normalize()
+    self.rotation.up = self.rotation.look:clone():rotate(quat.fromAngleAxis(90, sideVector))
 
-    if self.jitters:length() > 0.1 then self.jitters:scale(1-0.1/self.jitters:length()*dt) end
+    local cameraPosition = self.position:clone()
+    local cameraAngleQuat = quat.fromAngleAxis(math.rad(Settings.cameraAngle), sideVector)
 
-    if Settings.activeDof then
-        self.camera.dofDistance = self.prevClosestCar.distanceToCamera
-        self.camera.dofFactor = 1
+    -- "Jitter" explanation:
+    -- Car positions are updated every physics tick, but the drone is moved every frame.
+    -- This creates a jitter effect, especially noticeable when flying close to cars.
+    -- Jitter compensation jitters the drone with the car so the effect is not visible.
+    if Settings.jitterCompensation and not ac.isInReplayMode() then
+        self:updateJitter()
+        cameraPosition:add(self.jitter)
+    else
+        self.jitter, self.previousJitterClosestCar = vec3(), nil
     end
-    self.camera.fov = Settings.cameraFov
+
+    -- ac.GrabbedCamera has a delay when updating position from CSP v0.1.80-preview115 to at least v0.2.11
+    -- There needs to be no delay for jitter compensation to work, so use these functions instead.
+    -- If fixed GrabbedCamera approach might be better for multiple mods controlling camera, and for the currently removed "Active DOF" feature
+    ac.setCameraPosition(cameraPosition)
+    ac.setCameraDirection(self.rotation.look:clone():rotate(cameraAngleQuat), self.rotation.up:clone():rotate(cameraAngleQuat))
+    ac.setCameraFOV(Settings.cameraFov)
+
+    if self.jitter:length() > 0.1 then self.jitter:scale(1-0.1/self.jitter:length()*dt) end
+
+    if ButtonStates.savePositionButton.pressed then
+        self.savedState = {
+            position = self.position:clone(),
+            look = self.rotation.look:clone(),
+            up = self.rotation.up:clone(),
+            velocity = self.velocity:clone(),
+        }
+    end
+    if ButtonStates.teleportToPositionButton.pressed and self.savedState then
+        self.position = self.savedState.position:clone()
+        self.rotation.look = self.savedState.look:clone()
+        self.rotation.up = self.savedState.up:clone()
+        self.velocity = self.savedState.velocity:clone()
+    end
+end
+
+function Drone:updateJitter()
+    local closestCar = getClosestCar(self.position)
+
+    if closestCar and self.previousJitterClosestCar and closestCar.index == self.previousJitterClosestCar.index and
+        (closestCar.position-self.position):length() < Settings.maxDistance then
+
+        local posDiff = closestCar.position - self.previousJitterClosestCar.position
+        local velocity = posDiff / ((closestCar.timestamp-self.previousJitterClosestCar.timestamp) / 1000)
+
+        if velocity ~= velocity then velocity = vec3() end
+
+        if posDiff:length() < Settings.maxCompensation then
+            self.jitter:add(posDiff - velocity * ac.getSim().dt )
+        end
+    end
+
+    self.previousJitterClosestCar = {
+        timestamp = closestCar.timestamp,
+        position = closestCar.position:clone(),
+        index = closestCar.index
+    }
 end

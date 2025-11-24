@@ -1,7 +1,6 @@
 require("settings")
 require("input")
 require("drone")
-require("utils")
 
 local directory = ac.dirname()
 
@@ -12,17 +11,11 @@ ButtonStates = {
     disableCollisionButton = {},
     savePositionButton = {},
     teleportToPositionButton = {},
-    toggleActiveDofButton = {},
 }
 
 function script.droneUpdate(dt)
     Input:update()
-
-    if Drone.changingCameraMode then Drone:toggle() end
-
-    if Drone.active and Drone.camera and Drone.camera:active() then
-        Drone:physics(dt)
-    end
+    Drone:physics(dt)
 end
 
 function script.update()
@@ -38,7 +31,6 @@ function script.update()
     end
     if ButtonStates.toggleSleepButton.pressed then Drone:toggleSleep() end
     if ButtonStates.toggleDroneButton.pressed then Drone:toggle() end
-    if ButtonStates.toggleActiveDofButton.pressed then Drone:toggleActiveDof() end
 end
 
 local presets = {}
@@ -203,10 +195,6 @@ local function stuffTab()
     ui.pushItemWidth(ui.windowWidth() / 2 - 25)
     slider("Max distance to keep compensating", "Lag compensation", "maxDistance", 10, 100, 1, 0, "m", "Stops compensation if there is no car closer than this distance")
     ui.nextColumn()
-    if ui.button("Turn active DOF " .. (Settings.activeDof and "off" or "on")) then
-        Drone:toggleActiveDof()
-    end
-    if ui.itemHovered() then ui.setTooltip("Actively updates DOF distance to focus on the closest car") end
     ui.pushItemWidth(ui.windowWidth() / 2 - 25 - 55)
     time, _ = ui.slider("##timeSlider", time, 0, 24, "Time: " .. "%.1f hours")
     ui.sameLine(0, 4)
@@ -221,7 +209,6 @@ local function keybindsTab()
     keybind("Toggle drone:", "toggleDroneButton")
     keybind("Disable air drag (hold):", "disableAirDragButton")
     keybind("Save positon:", "savePositionButton")
-    keybind("Toggle active DOF", "toggleActiveDofButton")
     ui.nextColumn()
     keybind("Toggle sleep:", "toggleSleepButton")
     keybind("Disable collision (hold):", "disableCollisionButton")
@@ -292,7 +279,9 @@ function script.sFpvDrone()
     if ui.button(Drone.active and "Turn off" or "Turn on", vec2(60, 0)) then
         Drone:toggle()
     end
-    if ui.button("Sleep", vec2(60, 0)) then Drone:toggleSleep() end
+    if Drone.active then
+        if ui.button(Drone.sleep and "Sleep off" or "Sleep on", vec2(70, 0)) then Drone:toggleSleep() end
+    end
 
     local square0pos = vec2(ui.windowWidth() / 2 - 26, 54)
     local square1pos = vec2(ui.windowWidth() / 2 + 27, 54)
