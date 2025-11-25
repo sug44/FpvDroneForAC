@@ -1,1 +1,3 @@
 settings/settings.json
+settings/presets/*
+!settings/presets/defaultNoInput.json

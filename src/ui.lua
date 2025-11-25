@@ -1,11 +1,11 @@
 local M = {}
 
-local function slider(label, section, valueName, min, max, multiplier, decimals, units, description, fn)
-    local value, changed = ui.slider("##" .. valueName, (section and Settings[valueName] or valueName) * multiplier, min, max, label .. ": %." .. decimals .. "f " .. units)
+local function slider(label, settingsValueName, min, max, multiplier, decimals, units, description, fn)
+    local value, changed = ui.slider("##" .. settingsValueName, Settings[settingsValueName] * multiplier, min, max, label .. ": %." .. decimals .. "f " .. units)
     if ui.itemHovered() and not ui.itemActive() and description then ui.setTooltip(description) end
     if changed then
         if fn then value = fn(value) end
-        if section and valueName then Settings[valueName] = math.round(value, decimals) / multiplier end
+        Settings[settingsValueName] = math.round(value, decimals) / multiplier
     end
     return value, changed
 end
@@ -81,27 +81,27 @@ end
 local function fpvDroneTab()
     ui.columns(3, false)
     ui.pushItemWidth(ui.windowWidth() / 3 - 15)
-    slider("Batery cells", "FPV Drone", "batteryCells", 3, 6, 1, 0, "")
-    slider("Prop diameter", "FPV Drone", "propDiameter", 3, 6, 1, 1, "in")
-    slider("Prop pitch", "FPV Drone", "propPitch", 2, 6, 1, 1, "in")
+    slider("Batery cells", "batteryCells", 3, 6, 1, 0, "")
+    slider("Prop diameter", "propDiameter", 3, 6, 1, 1, "in")
+    slider("Prop pitch", "propPitch", 2, 6, 1, 1, "in")
     if ui.checkbox("Linear acceleration", Settings.linearAcceleration) then
         Settings.linearAcceleration = not Settings.linearAcceleration
     end
     if ui.itemHovered() then ui.setTooltip("Make thrust linear to throttle. Motor KV is multiplier") end
     ui.nextColumn()
     ui.pushItemWidth(ui.windowWidth() / 3 - 15)
-    slider("Motor KV", "FPV Drone", "motorKv", 1000, 3000, 1, 0, "")
-    slider("Camera angle", "FPV Drone", "cameraAngle", 0, 90, 1, 0, "")
-    slider("Camera fov", "FPV Drone", "cameraFov", 10, 150, 1, 0, "")
+    slider("Motor KV", "motorKv", 1000, 3000, 1, 0, "")
+    slider("Camera angle", "cameraAngle", 0, 90, 1, 0, "")
+    slider("Camera fov", "cameraFov", 10, 150, 1, 0, "")
     if ui.checkbox("Collision", Settings.collision) then
         Settings.collision = not Settings.collision
     end
     if ui.itemHovered() then ui.setTooltip("If you need to temporarily disable collision use \"Disable collision\" keybind") end
     ui.nextColumn()
     ui.pushItemWidth(ui.windowWidth() / 3 - 15)
-    slider("Mass", "FPV Drone", "droneMass", 10, 2000, 1000, 0, "gram")
-    slider("Surface Area", "FPV Drone", "droneSurfaceArea", 0, 500, 1e4, 0, "cm^2")
-    slider("MinSurfAreaCoeff", "FPV Drone", "minimalSurfaceAreaCoefficient", 0, 1, 1, 1, "",
+    slider("Mass", "droneMass", 10, 2000, 1000, 0, "gram")
+    slider("Surface Area", "droneSurfaceArea", 0, 500, 1e4, 0, "cm^2")
+    slider("MinSurfAreaCoeff", "minimalSurfaceAreaCoefficient", 0, 1, 1, 1, "",
         "Coefficient by which surface area of the drone is multiplied when its going parallel to the airflow")
     ui.columns(1)
 end
@@ -110,35 +110,34 @@ local function ratesTab()
     ui.text("Betaflight rates")
     ui.columns(3, false)
     ui.pushItemWidth(ui.windowWidth() / 3 - 15)
-    slider("Roll rate", "Betaflight rates", "rollRate", 0, 3, 1, 2, "")
-    slider("Roll super", "Betaflight rates", "rollSuper", 0, 0.99, 1, 2, "")
-    slider("Roll expo", "Betaflight rates", "rollExpo", 0, 1, 1, 2, "")
+    slider("Roll rate", "rollRate", 0, 3, 1, 2, "")
+    slider("Roll super", "rollSuper", 0, 0.99, 1, 2, "")
+    slider("Roll expo", "rollExpo", 0, 1, 1, 2, "")
     ui.nextColumn()
     ui.pushItemWidth(ui.windowWidth() / 3 - 15)
-    slider("Pitch rate", "Betaflight rates", "pitchRate", 0, 3, 1, 2, "")
-    slider("Pitch super", "Betaflight rates", "pitchSuper", 0, 0.99, 1, 2, "")
-    slider("Pitch expo", "Betaflight rates", "pitchExpo", 0, 1, 1, 2, "")
+    slider("Pitch rate", "pitchRate", 0, 3, 1, 2, "")
+    slider("Pitch super", "pitchSuper", 0, 0.99, 1, 2, "")
+    slider("Pitch expo", "pitchExpo", 0, 1, 1, 2, "")
     ui.nextColumn()
     ui.pushItemWidth(ui.windowWidth() / 3 - 15)
-    slider("Yaw rate", "Betaflight rates", "yawRate", 0, 3, 1, 2, "")
-    slider("Yaw super", "Betaflight rates", "yawSuper", 0, 0.99, 1, 2, "")
-    slider("Yaw expo", "Betaflight rates", "yawExpo", 0, 1, 1, 2, "")
+    slider("Yaw rate", "yawRate", 0, 3, 1, 2, "")
+    slider("Yaw super", "yawSuper", 0, 0.99, 1, 2, "")
+    slider("Yaw expo", "yawExpo", 0, 1, 1, 2, "")
     ui.columns(1)
 end
 
 local function physicsTab()
     ui.columns(2, false)
     ui.pushItemWidth(ui.windowWidth() / 2 - 25)
-    slider("Air density", "Physics", "airDensity", 0, 3, 1, 1, "")
-    slider("Air drag", "Physics", "airDrag", 0, 3, 1, 1, "")
-    slider("Time multiplier", "Physics", "time", 0.05, 2, 1, 1, "")
+    slider("Air density", "airDensity", 0, 3, 1, 1, "")
+    slider("Air drag", "airDrag", 0, 3, 1, 1, "")
+    slider("Time multiplier", "time", 0.05, 2, 1, 1, "")
     ui.nextColumn()
     ui.pushItemWidth(ui.windowWidth() / 2 - 25)
-    slider("Gravity", "Physics", "gravity", -1, 3, 1, 1, "")
-    slider("Ground height", "Physics", "groundLevel", -5000, 5000, 1, 0, "")
-    if ui.itemHovered() then ui.setTooltip("Height of simulated ground. Prevents the drone from falling under the map forever") end
-    slider("Drone friction", "Physics", "groundFriction", 0, 1, 1, 2, "")
-    slider("Bounciness", "Physics", "bounciness", 0, 1, 1, 2, "")
+    slider("Gravity", "gravity", -1, 3, 1, 1, "")
+    slider("Ground height", "groundLevel", -5000, 5000, 1, 0, "m", "Height of simulated ground. Prevents the drone from falling under the map forever")
+    slider("Drone friction", "groundFriction", 0, 1, 1, 2, "")
+    slider("Bounciness", "bounciness", 0, 1, 1, 2, "")
     ui.columns(1)
 end
 
@@ -157,10 +156,10 @@ Jitter compensation jitters the drone with the car so the effect is not visible.
     ui.nextColumn()
     ui.nextColumn()
     ui.pushItemWidth(ui.windowWidth() / 2 - 25)
-    slider("Max compensation distance", "Lag compensation", "maxCompensation", 2, 20, 1, 0, "m", "Filters out large lag spikes and car resets")
+    slider("Max compensation distance", "maxCompensation", 2, 20, 1, 0, "m", "Filters out large lag spikes and car resets")
     ui.nextColumn()
     ui.pushItemWidth(ui.windowWidth() / 2 - 25)
-    slider("Max distance to keep compensating", "Lag compensation", "maxDistance", 10, 100, 1, 0, "m", "Stops compensation if there is no car closer than this distance")
+    slider("Max distance to keep compensating", "maxDistance", 10, 100, 1, 0, "m", "Stops compensation if there is no car closer than this distance")
     ui.nextColumn()
     ui.pushItemWidth(ui.windowWidth() / 2 - 25 - 55)
     time, _ = ui.slider("##timeSlider", time, 0, 24, "Time: " .. "%.1f hours")
@@ -208,16 +207,16 @@ local function inputTab()
     if ui.checkbox("Invert throttle", Settings.invertThrottle) then
         Settings.invertThrottle = not Settings.invertThrottle
     end
-    slider("Throttle from", "Input", "throttleFrom", -1, 1, 1, 1, "", nil, function (value) return math.min(value, Settings.throttleTo - 0.1) end)
-    slider("Throttle to", "Input", "throttleTo", -1, 1, 1, 1, "", nil, function (value) return math.max(value, Settings.throttleFrom + 0.1) end)
+    slider("Throttle from", "throttleFrom", -1, 1, 1, 1, "", nil, function (value) return math.min(value, Settings.throttleTo - 0.1) end)
+    slider("Throttle to", "throttleTo", -1, 1, 1, 1, "", nil, function (value) return math.max(value, Settings.throttleFrom + 0.1) end)
     ui.nextColumn()
 
     ui.pushItemWidth(ui.windowWidth() / 4 - 15)
     ui.setNextItemWidth(50)
     controllerAxis("Roll axis:", "rollAxis")
     if ui.checkbox("Invert roll", Settings.invertRoll) then Settings.invertRoll = not Settings.invertRoll end
-    slider("Roll from", "Input", "rollFrom", -1, 1, 1, 1, "", nil, function (value) return math.min(value, Settings.rollTo - 0.1) end)
-    slider("Roll to", "Input", "rollTo", -1, 1, 1, 1, "", nil, function (value) return math.max(value, Settings.rollFrom + 0.1) end)
+    slider("Roll from", "rollFrom", -1, 1, 1, 1, "", nil, function (value) return math.min(value, Settings.rollTo - 0.1) end)
+    slider("Roll to", "rollTo", -1, 1, 1, 1, "", nil, function (value) return math.max(value, Settings.rollFrom + 0.1) end)
     ui.nextColumn()
 
     ui.pushItemWidth(ui.windowWidth() / 4 - 15)
@@ -226,16 +225,16 @@ local function inputTab()
     if ui.checkbox("Invert pitch", Settings.invertPitch) then
         Settings.invertPitch = not Settings.invertPitch
     end
-    slider("Pitch from", "Input", "pitchFrom", -1, 1, 1, 1, "", nil, function (value) return math.min(value, Settings.pitchTo - 0.1) end)
-    slider("Pitch to", "Input", "pitchTo", -1, 1, 1, 1, "", nil, function (value) return math.max(value, Settings.pitchFrom + 0.1) end)
+    slider("Pitch from", "pitchFrom", -1, 1, 1, 1, "", nil, function (value) return math.min(value, Settings.pitchTo - 0.1) end)
+    slider("Pitch to", "pitchTo", -1, 1, 1, 1, "", nil, function (value) return math.max(value, Settings.pitchFrom + 0.1) end)
     ui.nextColumn()
 
     ui.pushItemWidth(ui.windowWidth() / 4 - 15)
     ui.setNextItemWidth(50)
     controllerAxis("Yaw axis:", "yawAxis")
     if ui.checkbox("Invert yaw", Settings.invertYaw) then Settings.invertYaw = not Settings.invertYaw end
-    slider("Yaw from", "Input", "yawFrom", -1, 1, 1, 1, "", nil, function (value) return math.min(value, Settings.yawTo - 0.1) end)
-    slider("Yaw to", "Input", "yawTo", -1, 1, 1, 1, "", nil, function (value) return math.max(value, Settings.yawFrom + 0.1) end)
+    slider("Yaw from", "yawFrom", -1, 1, 1, 1, "", nil, function (value) return math.min(value, Settings.yawTo - 0.1) end)
+    slider("Yaw to", "yawTo", -1, 1, 1, 1, "", nil, function (value) return math.max(value, Settings.yawFrom + 0.1) end)
     ui.columns(1)
 end
 
@@ -316,8 +315,8 @@ function M.inputDisplayWindow()
 end
 
 function M.inputDisplaySettingsWindow()
-    slider("Square size", "App", "squareSize", 1, 500, 1, 0, "px")
-    slider("Square gap", "App", "squareGap", 0, 500, 1, 0, "px")
+    slider("Square size", "squareSize", 1, 500, 1, 0, "px")
+    slider("Square gap", "squareGap", 0, 500, 1, 0, "px")
     ui.text("Square color")
     ui.setNextItemWidth(150)
     local squareColorS = rgbm(tonumber(Settings.squareColor[1]), tonumber(Settings.squareColor[2]), tonumber(Settings.squareColor[3]), tonumber(Settings.squareColor[4]))
@@ -328,7 +327,7 @@ function M.inputDisplaySettingsWindow()
     if soChanged then
         Settings.squareColor = { squareColorS.r, squareColorS.g, squareColorS.b, squareOpacity }
     end
-    slider("Circle radius", "App", "circleRadius", 1, 100, 1, 0, "px")
+    slider("Circle radius", "circleRadius", 1, 100, 1, 0, "px")
     ui.text("Circle color")
     ui.setNextItemWidth(150)
     local circleColorS = rgbm(tonumber(Settings.circleColor[1]), tonumber(Settings.circleColor[2]), tonumber(Settings.circleColor[3]), tonumber(Settings.circleColor[4]))

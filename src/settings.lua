@@ -19,8 +19,10 @@ end
 
 function M:loadPreset(presetName)
     local preset = io.load(self.presetsPath .. presetName .. ".json")
-    if preset then io.save(self.path, preset) end
-    self:load()
+    if preset then
+        io.save(self.path, preset)
+        self:load()
+    end
 end
 
 function M:savePreset(presetName)
