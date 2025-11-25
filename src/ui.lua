@@ -84,11 +84,19 @@ local function fpvDroneTab()
     slider("Batery cells", "FPV Drone", "batteryCells", 3, 6, 1, 0, "")
     slider("Prop diameter", "FPV Drone", "propDiameter", 3, 6, 1, 1, "in")
     slider("Prop pitch", "FPV Drone", "propPitch", 2, 6, 1, 1, "in")
+    if ui.checkbox("Linear acceleration", Settings.linearAcceleration) then
+        Settings.linearAcceleration = not Settings.linearAcceleration
+    end
+    if ui.itemHovered() then ui.setTooltip("Make thrust linear to throttle. Motor KV is multiplier") end
     ui.nextColumn()
     ui.pushItemWidth(ui.windowWidth() / 3 - 15)
     slider("Motor KV", "FPV Drone", "motorKv", 1000, 3000, 1, 0, "")
     slider("Camera angle", "FPV Drone", "cameraAngle", 0, 90, 1, 0, "")
     slider("Camera fov", "FPV Drone", "cameraFov", 10, 150, 1, 0, "")
+    if ui.checkbox("Collision", Settings.collision) then
+        Settings.collision = not Settings.collision
+    end
+    if ui.itemHovered() then ui.setTooltip("If you need to temporarily disable collision use \"Disable collision\" keybind") end
     ui.nextColumn()
     ui.pushItemWidth(ui.windowWidth() / 3 - 15)
     slider("Mass", "FPV Drone", "droneMass", 10, 2000, 1000, 0, "gram")
@@ -96,10 +104,6 @@ local function fpvDroneTab()
     slider("MinSurfAreaCoeff", "FPV Drone", "minimalSurfaceAreaCoefficient", 0, 1, 1, 1, "",
         "Coefficient by which surface area of the drone is multiplied when its going parallel to the airflow")
     ui.columns(1)
-    if ui.checkbox("Linear acceleration", Settings.linearAcceleration) then
-        Settings.linearAcceleration = not Settings.linearAcceleration
-    end
-    if ui.itemHovered() then ui.setTooltip("Make thrust linear to throttle. Motor KV is multiplier") end
 end
 
 local function ratesTab()
@@ -133,6 +137,8 @@ local function physicsTab()
     slider("Gravity", "Physics", "gravity", -1, 3, 1, 1, "")
     slider("Ground height", "Physics", "groundLevel", -5000, 5000, 1, 0, "")
     if ui.itemHovered() then ui.setTooltip("Height of simulated ground. Prevents the drone from falling under the map forever") end
+    slider("Drone friction", "Physics", "groundFriction", 0, 1, 1, 2, "")
+    slider("Bounciness", "Physics", "bounciness", 0, 1, 1, 2, "")
     ui.columns(1)
 end
 
@@ -167,13 +173,13 @@ end
 
 local function keybindsTab()
     ui.columns(2, false)
-    keybind("Toggle drone:", "toggleDroneButton")
-    keybind("Disable air drag (hold):", "disableAirDragButton")
-    keybind("Save positon:", "savePositionButton")
+    keybind("Toggle drone", "toggleDroneButton")
+    keybind("Disable drag and friction", "disableAirDragAndFrictionButton")
+    keybind("Save positon", "savePositionButton")
     ui.nextColumn()
-    keybind("Toggle sleep:", "toggleSleepButton")
-    keybind("Disable collision (hold):", "disableCollisionButton")
-    keybind("Teleport to position:", "teleportToPositionButton")
+    keybind("Toggle sleep", "toggleSleepButton")
+    keybind("Disable collision", "disableCollisionButton")
+    keybind("Teleport to position", "teleportToPositionButton")
     ui.nextColumn()
     ui.columns(1)
 end

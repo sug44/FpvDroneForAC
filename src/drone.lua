@@ -32,6 +32,10 @@ local function vectorAngle(vec1, vec2)
     return angle == angle and angle or 0
 end
 
+local function excludeVector(v, vectorToExclude)
+    return v - vectorToExclude * v:dot(vectorToExclude)
+end
+
 local function getClosestCar(toPosition)
     local closestCarIndex = 0
     local minDistance = 1e9
@@ -77,6 +81,7 @@ function M:toggle()
 
         self.active = true
         self.sleep = false
+        self.prevColliderPos = nil
     else
         if self.previousCameraMode then ac.setCurrentCamera(self.previousCameraMode) end
         self.active = false
@@ -108,7 +113,7 @@ function M:update(dt)
         Settings.mode3d and Input.throttle or (Input.throttle + 1) / 2, inflowVelocity))
 
     local airDragForce = vec3()
-    if not Input.disableAirDragButton.down then
+    if not Input.disableAirDragAndFrictionButton.down then
         airDragForce = airDragForceFn(1.2 * Settings.airDensity, self.velocity, Settings.airDrag,
             Settings.droneSurfaceArea, Settings.minimalSurfaceAreaCoefficient, inflowCoefficient)
     end
@@ -123,6 +128,8 @@ function M:update(dt)
         self.position.y = Settings.groundLevel + 0.1
         self.velocity.y = 0.01
     end
+
+    self:collision()
 
     local rotation = {
         roll = math.rad(betaflightRates(Input.roll, Settings.rollRate, Settings.rollSuper, Settings.rollExpo)) * dt,
@@ -140,7 +147,7 @@ function M:update(dt)
     sideVector:rotate(rotationQuat):normalize()
     self.rotation.up = self.rotation.look:clone():rotate(quat.fromAngleAxis(90, sideVector))
 
-    local cameraPosition = self.position:clone()
+    local cameraPosition = self.position + self.rotation.up * 0.1
     local cameraAngleQuat = quat.fromAngleAxis(math.rad(Settings.cameraAngle), sideVector)
 
     -- "Jitter" explanation:
@@ -177,6 +184,29 @@ function M:update(dt)
         self.rotation.up = self.savedState.up:clone()
         self.velocity = self.savedState.velocity:clone()
     end
+end
+
+function M:collision()
+    if self.prevColliderPos and Settings.collision and not Input.disableCollisionButton.down then
+        local point, normal = vec3(), vec3()
+        local hit = physics.raycastTrack(self.prevColliderPos, self.position-self.prevColliderPos, 1, point, normal) ~= -1
+            or physics.raycastTrack(self.prevColliderPos+vec3(0,0,0.01), self.position-self.prevColliderPos, 1, point, normal) ~= -1
+
+        if hit then
+            self.velocity = self.velocity - normal * self.velocity:dot(normal) * (1+Settings.bounciness)
+            if not Input.disableAirDragAndFrictionButton.down then
+                self.velocity = self.velocity - excludeVector(self.velocity:clone():normalize(), normal)
+                    * math.min(1, self.velocity:length() * Settings.groundFriction * 0.5)
+            end
+            self.position = point + excludeVector(self.position - point, normal) + normal/500
+
+            local secondHit = physics.raycastTrack(self.prevColliderPos, self.position-self.prevColliderPos, 1, point, normal) ~= -1
+            if secondHit then
+                self.position = self.prevColliderPos + (point-self.prevColliderPos) * 0.2
+            end
+        end
+    end
+    self.prevColliderPos = self.position:clone()
 end
 
 function M:updateJitter()
