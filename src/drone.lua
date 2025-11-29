@@ -145,7 +145,7 @@ function M:update(dt)
     self.rotation.look:rotate(rotationQuat):normalize()
     -- this is to make sure look and up are 90 degrees apart
     sideVector:rotate(rotationQuat):normalize()
-    self.rotation.up = self.rotation.look:clone():rotate(quat.fromAngleAxis(90, sideVector))
+    self.rotation.up = self.rotation.look:clone():rotate(quat.fromAngleAxis(math.rad(90), sideVector))
 
     local cameraPosition = self.position + self.rotation.up * 0.1
     local cameraAngleQuat = quat.fromAngleAxis(math.rad(Settings.cameraAngle), sideVector)
