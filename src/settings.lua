@@ -15,6 +15,7 @@ function M:load()
     for k, v in pairs(JSON.parse(settings)) do
         self.values[k] = v
     end
+    Input:updateInputDevice()
 end
 
 function M:loadPreset(presetName)
@@ -41,11 +42,6 @@ function M:updatePresets()
         table.insert(self.presets, fileName:match("%w*"))
     end)
 end
-
-M:updatePresets()
-M:load()
-
-ac.onFolderChanged(M.presetsPath, nil, false, function() M:updatePresets() end)
 
 setmetatable(M, {
     __index = M.values,

@@ -10,28 +10,28 @@ local function slider(label, settingsValueName, min, max, multiplier, decimals, 
     return value, changed
 end
 
-local listeningAxis = {}
+local listeningAxis = -1
 local axisStartValues = {}
 local function controllerAxis(label, key)
     ui.alignTextToFramePadding()
     ui.text(label)
     ui.sameLine(0, 2)
-    if ui.button((Settings[key] ~= -1 and Settings[key] + 1 or " ") .. "##" .. key, vec2(22, 22), listeningAxis[key] and ui.ButtonFlags.Active or ui.ButtonFlags.None) then
-        listeningAxis[key] = not listeningAxis[key]
-        if listeningAxis[key] then
+    if ui.button((Settings[key] ~= -1 and Settings[key] + 1 or " ") .. "##" .. key, vec2(22, 22), listeningAxis == key and ui.ButtonFlags.Active or ui.ButtonFlags.None) then
+        listeningAxis = listeningAxis == key and -1 or key
+        if listeningAxis == key then
             table.clear(axisStartValues)
-            for i = 0, ac.getJoystickAxisCount(Settings.inputDevice) do
-                table.insert(axisStartValues, ac.getJoystickAxisValue(Settings.inputDevice, i))
+            for i = 0, ac.getJoystickAxisCount(Input.inputDevice) do
+                table.insert(axisStartValues, ac.getJoystickAxisValue(Input.inputDevice, i))
             end
         end
     end
     if ui.itemHovered() then ui.setTooltip("Click and move stick to set") end
     if Settings[key] == -1 then ui.addIcon(ui.Icons.QuestionSign, vec2(10, 10), vec2(0.5, 0.5), nil, vec2(0, 0)) end
-    if listeningAxis[key] then
-        for i = 0, ac.getJoystickAxisCount(Settings.inputDevice) do
-            if math.abs(axisStartValues[i + 1] - ac.getJoystickAxisValue(Settings.inputDevice, i)) > 0.3 then
+    if listeningAxis == key then
+        for i = 0, ac.getJoystickAxisCount(Input.inputDevice) do
+            if math.abs(axisStartValues[i + 1] - ac.getJoystickAxisValue(Input.inputDevice, i)) > 0.3 then
                 Settings[key] = i
-                listeningAxis[key] = false
+                listeningAxis = -1
                 break
             end
         end
@@ -41,7 +41,7 @@ local function controllerAxis(label, key)
     ui.addIcon(ui.Icons.Cancel, vec2(10, 10), vec2(0.5, 0.5), nil, vec2(0, 0))
 end
 
-local listeningKey = {}
+local listeningKey = -1
 local function keybind(label, key)
     ui.alignTextToFramePadding()
     ui.text(label)
@@ -53,22 +53,22 @@ local function keybind(label, key)
     elseif buttonSettings.type == "controller" then
         buttonLabel = "Controller: " .. buttonSettings.key
     end
-    if ui.button(buttonLabel .. "##" .. key, vec2(100, 22), listeningKey[key] and ui.ButtonFlags.Active or ui.ButtonFlags.None) then
-        listeningKey[key] = not listeningKey[key]
+    if ui.button(buttonLabel .. "##" .. key, vec2(100, 22), listeningKey == key and ui.ButtonFlags.Active or ui.ButtonFlags.None) then
+        listeningKey = listeningKey == key and -1 or key
     end
     if Settings[key].type == "none" then ui.addIcon(ui.Icons.QuestionSign, vec2(10, 10), vec2(0.5, 0.5), nil, vec2(0, 0)) end
-    if listeningKey[key] then
+    if listeningKey == key then
         for _, i in pairs(ui.KeyIndex) do
             if ui.keyboardButtonDown(i) then
                 Settings[key] = { type = "keyboard", key = i }
-                listeningKey[key] = false
+                listeningKey = -1
                 break
             end
         end
-        for i = 0, ac.getJoystickButtonsCount(Settings.inputDevice), 1 do
-            if ac.isJoystickButtonPressed(Settings.inputDevice, i) then
+        for i = 0, ac.getJoystickButtonsCount(Input.inputDevice), 1 do
+            if ac.isJoystickButtonPressed(Input.inputDevice, i) then
                 Settings[key] = { type = "controller", key = i }
-                listeningKey[key] = false
+                listeningKey = -1
                 break
             end
         end
@@ -132,9 +132,9 @@ local function physicsTab()
     slider("Air density", "airDensity", 0, 3, 1, 1, "")
     slider("Air drag", "airDrag", 0, 3, 1, 1, "")
     slider("Time multiplier", "time", 0.05, 2, 1, 1, "")
+    slider("Gravity", "gravity", -1, 3, 1, 1, "")
     ui.nextColumn()
     ui.pushItemWidth(ui.windowWidth() / 2 - 25)
-    slider("Gravity", "gravity", -1, 3, 1, 1, "")
     slider("Ground height", "groundLevel", -5000, 5000, 1, 0, "m", "Height of simulated ground. Prevents the drone from falling under the map forever")
     slider("Drone friction", "groundFriction", 0, 1, 1, 2, "")
     slider("Bounciness", "bounciness", 0, 1, 1, 2, "")
@@ -169,15 +169,17 @@ end
 local function inputTab()
     ui.columns(2, false)
     ui.setNextItemWidth(160)
-    ui.combo("Input device", ac.getJoystickName(Settings.inputDevice), function ()
+    ui.combo("Input device", ac.getJoystickName(Input.inputDevice), function ()
         for i = 0, ac.getJoystickCount()-1 do
             local name = ac.getJoystickName(i)
             if name and ui.selectable(name) then
                 Settings.inputDeviceName = ac.getJoystickName(i)
-                Settings.inputDevice = i
+                Settings.inputDeviceGUID = ac.getJoystickInstanceGUID(i)
+                Input:updateInputDevice()
             end
         end
     end)
+    if ui.itemHovered() then ui.setTooltip("Only controllers plugged in at AC launch can be used") end
     ui.nextColumn()
     if ui.checkbox("3D Mode", Settings.mode3d) then Settings.mode3d = not Settings.mode3d end
     if ui.itemHovered() then ui.setTooltip("Lower half of throttle range will spin the motors backwards. Recommended for game controllers") end

@@ -1,6 +1,7 @@
 {
     "mode3d": false,
     "inputDeviceName": "Wireless Controller",
+    "inputDeviceGUID" : "",
     "throttleFrom": -1,
     "throttleTo": 1,
     "yawFrom": -1,

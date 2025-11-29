@@ -3,6 +3,10 @@ Settings = require("src/settings")
 Input = require("src/input")
 Drone = require("src/drone")
 
+ac.onFolderChanged(Settings.presetsPath, nil, false, function() Settings:updatePresets() end)
+Settings:updatePresets()
+Settings:load()
+
 script.droneUpdate = function(dt) Drone:update(dt) end
 script.fpvDroneWindow = Ui.fpvDroneWindow
 script.inputDisplayWindow= Ui.inputDisplayWindow
