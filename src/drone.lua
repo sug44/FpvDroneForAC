@@ -60,8 +60,6 @@ local M = {
     rotation = { look = vec3(), up = vec3() },
     velocity = vec3(),
     savedState = nil,
-    previousJitterClosestCar = nil,
-    jitter = vec3(),
 }
 
 function M:toggle()
@@ -71,7 +69,6 @@ function M:toggle()
         self.rotation.look = ac.getCameraForward():rotate(cameraAngleQuat)
         self.rotation.up = ac.getCameraUp():rotate(cameraAngleQuat)
         self.velocity = getClosestCar(self.position).velocity:clone():add(vec3(0, 10, 0))
-        self.jitter = vec3()
 
         -- couldnt find a way to change camera near clip distance,
         -- so change camera mode to one with near clip distance I need.
@@ -81,7 +78,7 @@ function M:toggle()
 
         self.active = true
         self.sleep = false
-        self.prevColliderPos = nil
+        self.lastPosition = nil
     else
         if self.previousCameraMode then ac.setCurrentCamera(self.previousCameraMode) end
         self.active = false
@@ -122,7 +119,15 @@ function M:update(dt)
     local acceleration = force / Settings.droneMass + vec3(0, -9.8 * Settings.gravity, 0)
     self.velocity:addScaled(acceleration, dt)
 
-    self.position:addScaled(self.velocity, dt)
+    local positionDt = dt
+    local closestCar = getClosestCar(self.position)
+    if self.lastClosestCarTimestamp and not closestCar.extrapolatedMovement then
+        -- sync drone position updates with car position updates so there is no car jitter effect
+        positionDt = (closestCar.timestamp-self.lastClosestCarTimestamp)/1000
+    end
+    self.lastClosestCarTimestamp = closestCar.timestamp
+
+    self.position:addScaled(self.velocity, positionDt)
 
     if self.position.y < Settings.groundLevel + 0.1 then
         self.position.y = Settings.groundLevel + 0.1
@@ -150,25 +155,12 @@ function M:update(dt)
     local cameraPosition = self.position + self.rotation.up * 0.1
     local cameraAngleQuat = quat.fromAngleAxis(math.rad(Settings.cameraAngle), sideVector)
 
-    -- "Jitter" explanation:
-    -- Car positions are updated every physics tick, but the drone is moved every frame.
-    -- This creates a jitter effect, especially noticeable when flying close to cars.
-    -- Jitter compensation jitters the drone with the car so the effect is not visible.
-    if Settings.jitterCompensation and not ac.isInReplayMode() then
-        self:updateJitter()
-        cameraPosition:add(self.jitter)
-    else
-        self.jitter, self.previousJitterClosestCar = vec3(), nil
-    end
-
     -- ac.GrabbedCamera has a delay when updating position from CSP v0.1.80-preview115 to at least v0.2.11
     -- There needs to be no delay for jitter compensation to work, so use these functions instead.
     -- If fixed GrabbedCamera approach might be better for multiple mods controlling camera, and for the currently removed "Active DOF" feature
     ac.setCameraPosition(cameraPosition)
     ac.setCameraDirection(self.rotation.look:clone():rotate(cameraAngleQuat), self.rotation.up:clone():rotate(cameraAngleQuat))
     ac.setCameraFOV(Settings.cameraFov)
-
-    if self.jitter:length() > 0.1 then self.jitter:scale(1-0.1/self.jitter:length()*dt) end
 
     if Input.savePositionButton.pressed then
         self.savedState = {
@@ -183,53 +175,65 @@ function M:update(dt)
         self.rotation.look = self.savedState.look:clone()
         self.rotation.up = self.savedState.up:clone()
         self.velocity = self.savedState.velocity:clone()
+        self.lastPosition = nil
     end
+end
+
+local trackRoot = ac.findNodes("trackRoot:yes")
+local hitMesh = ac.emptySceneReference()
+
+local function collisionRaycast(fromPos, toPos, scene)
+    local vec, point, normal = toPos-fromPos, vec3(), vec3()
+    local distance = scene:raycast(render.createRay(fromPos, vec, vec:length()), hitMesh, point, normal, nil, 0)
+    -- with backface culling disabled raycast still returns distance of the hit when it hits a backface.
+    -- it changes the point vector reference only when the ray hits a front face, so use that
+    local hit = point:length() ~= 0
+
+    if hit then
+        local meshTransform = hitMesh:getWorldTransformationRaw()
+        point = fromPos+vec:clone():normalize():scale(distance)
+        normal = mat4x4.translation(normal):mulSelf(mat4x4.look(vec3(), -meshTransform.look, meshTransform.up):inverseSelf()).position
+
+        -- hack together a normal because normal from the raycast function is inaccurate
+        local v0 = point:clone():addScaled(normal, 0.05)
+        local r1 = point:clone():sub(v0):rotate(quat.fromAngleAxis(math.pi/4, math.cross(normal, vec3(0,1,0)):normalize())):normalize()
+        local r2 = r1:clone():rotate(quat.fromAngleAxis(math.pi/2, normal))
+        local d1 = hitMesh:raycast(render.createRay(v0, r1, 0.2))
+        local d2 = hitMesh:raycast(render.createRay(v0, r2, 0.2))
+        if d1~=-1 and d2~=-1 then
+            local p1 = v0:clone():addScaled(r1, d1)
+            local p2 = v0:clone():addScaled(r2, d2)
+            normal = math.cross(point:clone():sub(p1), point:clone():sub(p2)):normalize()
+        end
+    end
+
+    return hit, point, normal
 end
 
 function M:collision()
-    if self.prevColliderPos and Settings.collision and not Input.disableCollisionButton.down then
-        local point, normal = vec3(), vec3()
-        local hit = physics.raycastTrack(self.prevColliderPos, self.position-self.prevColliderPos, 1, point, normal) ~= -1
-            or physics.raycastTrack(self.prevColliderPos+vec3(0,0,0.01), self.position-self.prevColliderPos, 1, point, normal) ~= -1
+    if self.lastPosition and Settings.collision and not Input.disableCollisionButton.down then
+        for i=1,2 do
+            local hit, point, normal = collisionRaycast(self.lastPosition, self.position, trackRoot)
 
-        if hit then
-            self.velocity = self.velocity - normal * self.velocity:dot(normal) * (1+Settings.bounciness)
-            if not Input.disableAirDragAndFrictionButton.down then
-                self.velocity = self.velocity - excludeVector(self.velocity:clone():normalize(), normal)
-                    * math.min(1, self.velocity:length() * Settings.groundFriction * 0.5)
-            end
-            self.position = point + excludeVector(self.position - point, normal) + normal/500
+            if not hit then
+                break
+            else
+                self.velocity = self.velocity - normal * self.velocity:dot(normal) * (1+Settings.bounciness)
 
-            local secondHit = physics.raycastTrack(self.prevColliderPos, self.position-self.prevColliderPos, 1, point, normal) ~= -1
-            if secondHit then
-                self.position = self.prevColliderPos + (point-self.prevColliderPos) * 0.2
+                if not Input.disableAirDragAndFrictionButton.down then
+                    self.velocity = self.velocity - excludeVector(self.velocity:clone():normalize(), normal)
+                        * math.min(1, self.velocity:length() * Settings.groundFriction * 0.5)
+                end
+
+                if i == 1 then
+                    self.position = point + excludeVector(self.position - point, normal) + normal/500
+                else
+                    self.position = self.lastPosition + (point-self.lastPosition) * 0.2
+                end
             end
         end
     end
-    self.prevColliderPos = self.position:clone()
-end
-
-function M:updateJitter()
-    local closestCar = getClosestCar(self.position)
-
-    if closestCar and self.previousJitterClosestCar and closestCar.index == self.previousJitterClosestCar.index and
-        (closestCar.position-self.position):length() < Settings.maxDistance then
-
-        local posDiff = closestCar.position - self.previousJitterClosestCar.position
-        local velocity = posDiff / ((closestCar.timestamp-self.previousJitterClosestCar.timestamp) / 1000)
-
-        if velocity ~= velocity then velocity = vec3() end
-
-        if posDiff:length() < Settings.maxCompensation then
-            self.jitter:add(posDiff - velocity * ac.getSim().dt )
-        end
-    end
-
-    self.previousJitterClosestCar = {
-        timestamp = closestCar.timestamp,
-        position = closestCar.position:clone(),
-        index = closestCar.index
-    }
+    self.lastPosition = self.position:clone()
 end
 
 return M

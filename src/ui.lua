@@ -144,23 +144,6 @@ end
 local time = 0
 local function stuffTab()
     ui.columns(2, false)
-    if ui.checkbox("Jitter Compensation", Settings.jitterCompensation) then
-        Settings.jitterCompensation = not Settings.jitterCompensation
-        Drone.jitters = vec3()
-    end
-    if ui.itemHovered() then ui.setTooltip([[
-Compensation for high frequency jitter of the closest car.
-Car positions are updated every physics tick, but the drone is moved every frame.
-This creates a jitter effect, especially noticeable when flying close to cars.
-Jitter compensation jitters the drone with the car so the effect is not visible.]]) end
-    ui.nextColumn()
-    ui.nextColumn()
-    ui.pushItemWidth(ui.windowWidth() / 2 - 25)
-    slider("Max compensation distance", "maxCompensation", 2, 20, 1, 0, "m", "Filters out large lag spikes and car resets")
-    ui.nextColumn()
-    ui.pushItemWidth(ui.windowWidth() / 2 - 25)
-    slider("Max distance to keep compensating", "maxDistance", 10, 100, 1, 0, "m", "Stops compensation if there is no car closer than this distance")
-    ui.nextColumn()
     ui.pushItemWidth(ui.windowWidth() / 2 - 25 - 55)
     time, _ = ui.slider("##timeSlider", time, 0, 24, "Time: " .. "%.1f hours")
     ui.sameLine(0, 4)
