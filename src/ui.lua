@@ -141,18 +141,6 @@ local function physicsTab()
     ui.columns(1)
 end
 
-local time = 0
-local function stuffTab()
-    ui.columns(2, false)
-    ui.pushItemWidth(ui.windowWidth() / 2 - 25 - 55)
-    time, _ = ui.slider("##timeSlider", time, 0, 24, "Time: " .. "%.1f hours")
-    ui.sameLine(0, 4)
-    ui.pushItemWidth(66)
-    if ui.button("Apply") then ac.setTrackTimezoneOffset(time * 60 * 60) end
-    if ui.itemHovered() then ui.setTooltip("Requires WeatherFX") end
-    ui.columns(1)
-end
-
 local function keybindsTab()
     ui.columns(2, false)
     keybind("Toggle drone", "toggleDroneButton")
@@ -224,6 +212,7 @@ local function inputTab()
 end
 
 local savePresetName = ""
+local readmeText = io.load(ac.dirname().."/README.md")
 function M.fpvDroneWindow()
     ui.columns(2, false)
     ui.setColumnWidth(0, ui.windowWidth() - 207)
@@ -238,8 +227,8 @@ function M.fpvDroneWindow()
     local square0pos = vec2(ui.windowWidth() / 2 - 26, 54)
     local square1pos = vec2(ui.windowWidth() / 2 + 27, 54)
     local squareSize, circleRadius = 48, 4
-    local squareColor = rgbm(tonumber(Settings.squareColor[1]), tonumber(Settings.squareColor[2]), tonumber(Settings.squareColor[3]), tonumber(Settings.squareColor[4]))
-    local circleColor = rgbm(tonumber(Settings.circleColor[1]), tonumber(Settings.circleColor[2]), tonumber(Settings.circleColor[3]), tonumber(Settings.circleColor[4]))
+    local squareColor = rgbm(table.unpack(Settings.squareColor))
+    local circleColor = rgbm(table.unpack(Settings.circleColor))
     ui.drawRectFilled(square0pos + vec2(-squareSize / 2, -squareSize / 2), square0pos + vec2(squareSize / 2, squareSize / 2), squareColor)
     ui.drawRectFilled(square1pos + vec2(-squareSize / 2, -squareSize / 2), square1pos + vec2(squareSize / 2, squareSize / 2), squareColor)
     ui.drawCircleFilled(square0pos + vec2(Input.yaw, -Input.throttle):scale(squareSize / 2 - circleRadius), circleRadius, circleColor)
@@ -284,13 +273,15 @@ function M.fpvDroneWindow()
         ui.tabItem("Physics", physicsTab)
         ui.tabItem("Keybinds", keybindsTab)
         ui.tabItem("Input", inputTab)
-        ui.tabItem("Stuff", stuffTab)
+        if readmeText then
+            ui.tabItem("README", function() ui.textWrapped(readmeText) end)
+        end
     end)
 end
 
 function M.inputDisplayWindow()
-    local squareColor = rgbm(tonumber(Settings.squareColor[1]), tonumber(Settings.squareColor[2]), tonumber(Settings.squareColor[3]), tonumber(Settings.squareColor[4]))
-    local circleColor = rgbm(tonumber(Settings.circleColor[1]), tonumber(Settings.circleColor[2]), tonumber(Settings.circleColor[3]), tonumber(Settings.circleColor[4]))
+    local squareColor = rgbm(table.unpack(Settings.squareColor))
+    local circleColor = rgbm(table.unpack(Settings.circleColor))
     local square0pos = vec2(ui.windowWidth() / 2 - (Settings.squareSize + Settings.squareGap) / 2, ui.windowHeight() - Settings.squareGap - Settings.squareSize / 2)
     local square1pos = vec2(ui.windowWidth() / 2 + (Settings.squareSize + Settings.squareGap) / 2, ui.windowHeight() - Settings.squareGap - Settings.squareSize / 2)
     ui.drawRectFilled(square0pos + vec2(-Settings.squareSize / 2, -Settings.squareSize / 2), square0pos + vec2(Settings.squareSize / 2, Settings.squareSize / 2), squareColor)
@@ -304,7 +295,7 @@ function M.inputDisplaySettingsWindow()
     slider("Square gap", "squareGap", 0, 500, 1, 0, "px")
     ui.text("Square color")
     ui.setNextItemWidth(150)
-    local squareColorS = rgbm(tonumber(Settings.squareColor[1]), tonumber(Settings.squareColor[2]), tonumber(Settings.squareColor[3]), tonumber(Settings.squareColor[4]))
+    local squareColorS = rgbm(table.unpack(Settings.squareColor))
     if ui.colorPicker("##squareColor", squareColorS) then
         Settings.squareColor = { squareColorS.r, squareColorS.g, squareColorS.b, squareColorS.mult }
     end
@@ -315,7 +306,7 @@ function M.inputDisplaySettingsWindow()
     slider("Circle radius", "circleRadius", 1, 100, 1, 0, "px")
     ui.text("Circle color")
     ui.setNextItemWidth(150)
-    local circleColorS = rgbm(tonumber(Settings.circleColor[1]), tonumber(Settings.circleColor[2]), tonumber(Settings.circleColor[3]), tonumber(Settings.circleColor[4]))
+    local circleColorS = rgbm(table.unpack(Settings.circleColor))
     if ui.colorPicker("##circleColor", circleColorS) then
         Settings.circleColor = { circleColorS.r, circleColorS.g, circleColorS.b, circleColorS.mult }
     end
