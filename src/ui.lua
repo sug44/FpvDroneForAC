@@ -1,13 +1,19 @@
 local M = {}
 
-local function slider(label, settingsValueName, min, max, multiplier, decimals, units, description, fn)
-    local value, changed = ui.slider("##" .. settingsValueName, Settings[settingsValueName] * multiplier, min, max, label .. ": %." .. decimals .. "f " .. units)
+local function slider(label, valueOrSettingsKey, min, max, multiplier, decimals, units, description, fn)
+    multiplier, decimals = multiplier or 1, decimals or 2
+    local isSettingsKey = type(valueOrSettingsKey) == "string"
+    local value = isSettingsKey and Settings[valueOrSettingsKey] or valueOrSettingsKey
+    local newValue, changed = ui.slider("##" .. label, value * multiplier, min, max, label .. ": %." .. decimals .. "f " .. (units or ""))
     if ui.itemHovered() and not ui.itemActive() and description then ui.setTooltip(description) end
     if changed then
-        if fn then value = fn(value) end
-        Settings[settingsValueName] = math.round(value, decimals) / multiplier
+        if fn then newValue = fn(newValue) end
+        newValue = math.round(newValue, decimals) / multiplier
+        if isSettingsKey then
+            Settings[valueOrSettingsKey] = newValue
+        end
     end
-    return value, changed
+    return newValue, changed
 end
 
 local listeningAxis = -1
@@ -107,22 +113,86 @@ local function fpvDroneTab()
 end
 
 local function ratesTab()
-    ui.text("Betaflight rates")
+    ui.setNextItemWidth(100)
+    ui.combo("Rates Type", Settings.rates.type, function()
+        if ui.selectable("betaflight") then
+            Settings.rates = {
+                type = "betaflight",
+                pitch = { rate = 1, super = 0.7, expo = 0 },
+                roll = { rate = 1, super = 0.7, expo = 0 },
+                yaw = { rate = 1, super = 0.7, expo = 0 },
+            }
+        end
+        if ui.selectable("actual") then
+            Settings.rates = {
+                type = "actual",
+                pitch = { centerSensitivity = 182, maxRate = 667, expo = 0.5 },
+                roll = { centerSensitivity = 182, maxRate = 667, expo = 0.5 },
+                yaw = { centerSensitivity = 182, maxRate = 667, expo = 0.5 },
+            }
+        end
+        if ui.selectable("kiss") then
+            Settings.rates = {
+                type = "kiss",
+                pitch = { rate = 1, super = 0.7, curve = 0 },
+                roll = { rate = 1, super = 0.7, curve = 0 },
+                yaw = { rate = 1, super = 0.7, curve = 0 },
+            }
+        end
+    end)
+    local rates = Settings.rates
+    local rateFunction = Drone.rateFunctions[rates.type]
     ui.columns(3, false)
-    ui.pushItemWidth(ui.windowWidth() / 3 - 15)
-    slider("Roll rate", "rollRate", 0, 3, 1, 2, "")
-    slider("Roll super", "rollSuper", 0, 0.99, 1, 2, "")
-    slider("Roll expo", "rollExpo", 0, 1, 1, 2, "")
+    ui.text(string.format("Roll: %.2f  Deg/s: %d", Input.roll, rateFunction(Input.roll, rates.roll)))
+    ui.nextColumn()
+    ui.text(string.format("Pitch: %.2f  Deg/s: %d", Input.pitch, rateFunction(Input.pitch, rates.pitch)))
+    ui.nextColumn()
+    ui.text(string.format("Yaw: %.2f  Deg/s: %d", Input.yaw, rateFunction(Input.yaw, rates.yaw)))
     ui.nextColumn()
     ui.pushItemWidth(ui.windowWidth() / 3 - 15)
-    slider("Pitch rate", "pitchRate", 0, 3, 1, 2, "")
-    slider("Pitch super", "pitchSuper", 0, 0.99, 1, 2, "")
-    slider("Pitch expo", "pitchExpo", 0, 1, 1, 2, "")
-    ui.nextColumn()
-    ui.pushItemWidth(ui.windowWidth() / 3 - 15)
-    slider("Yaw rate", "yawRate", 0, 3, 1, 2, "")
-    slider("Yaw super", "yawSuper", 0, 0.99, 1, 2, "")
-    slider("Yaw expo", "yawExpo", 0, 1, 1, 2, "")
+    if rates.type == "betaflight" then
+        rates.roll.rate = slider("Roll rate", rates.roll.rate, 0, 3, 1, 2)
+        rates.roll.super = slider("Roll super", rates.roll.super, 0, 0.99, 1, 2)
+        rates.roll.expo = slider("Roll expo", rates.roll.expo, 0, 1, 1, 2)
+        ui.nextColumn()
+        ui.pushItemWidth(ui.windowWidth() / 3 - 15)
+        rates.pitch.rate = slider("Pitch rate", rates.pitch.rate, 0, 3, 1, 2)
+        rates.pitch.super = slider("Pitch super", rates.pitch.super, 0, 0.99, 1, 2)
+        rates.pitch.expo = slider("Pitch expo", rates.pitch.expo, 0, 1, 1, 2)
+        ui.nextColumn()
+        ui.pushItemWidth(ui.windowWidth() / 3 - 15)
+        rates.yaw.rate = slider("Yaw rate", rates.yaw.rate, 0, 3, 1, 2)
+        rates.yaw.super = slider("Yaw super", rates.yaw.super, 0, 0.99, 1, 2)
+        rates.yaw.expo = slider("Yaw expo", rates.yaw.expo, 0, 1, 1, 2)
+    elseif rates.type == "actual" then
+        rates.roll.centerSensitivity = slider("Roll center sensitivity", rates.roll.centerSensitivity, 10, 2000, 1, 0)
+        rates.roll.maxRate = slider("Roll max rate", rates.roll.maxRate, 0, 2000, 1, 0)
+        rates.roll.expo = slider("Roll expo", rates.roll.expo, 0, 1, 1, 2)
+        ui.nextColumn()
+        ui.pushItemWidth(ui.windowWidth() / 3 - 15)
+        rates.pitch.centerSensitivity = slider("Pitch center sensitivity", rates.pitch.centerSensitivity, 10, 2000, 1, 0)
+        rates.pitch.maxRate = slider("Pitch max rate", rates.pitch.maxRate, 0, 2000, 1, 0)
+        rates.pitch.expo = slider("Pitch expo", rates.pitch.expo, 0, 1, 1, 2)
+        ui.nextColumn()
+        ui.pushItemWidth(ui.windowWidth() / 3 - 15)
+        rates.yaw.centerSensitivity = slider("Yaw center sensitivity", rates.yaw.centerSensitivity, 10, 2000, 1, 0)
+        rates.yaw.maxRate = slider("Yaw max rate", rates.yaw.maxRate, 0, 2000, 1, 0)
+        rates.yaw.expo = slider("Yaw expo", rates.yaw.expo, 0, 1, 1, 2)
+    elseif rates.type == "kiss" then
+        rates.roll.rate = slider("Roll rate", rates.roll.rate, 0, 3, 1, 2)
+        rates.roll.super = slider("Roll super", rates.roll.super, 0, 0.99, 1, 2)
+        rates.roll.curve = slider("Roll curve", rates.roll.curve, 0, 1, 1, 2)
+        ui.nextColumn()
+        ui.pushItemWidth(ui.windowWidth() / 3 - 15)
+        rates.pitch.rate = slider("Pitch rate", rates.pitch.rate, 0, 3, 1, 2)
+        rates.pitch.super = slider("Pitch super", rates.pitch.super, 0, 0.99, 1, 2)
+        rates.pitch.curve = slider("Pitch curve", rates.pitch.curve, 0, 1, 1, 2)
+        ui.nextColumn()
+        ui.pushItemWidth(ui.windowWidth() / 3 - 15)
+        rates.yaw.rate = slider("Yaw rate", rates.yaw.rate, 0, 3, 1, 2)
+        rates.yaw.super = slider("Yaw super", rates.yaw.super, 0, 0.99, 1, 2)
+        rates.yaw.curve = slider("Yaw curve", rates.yaw.curve, 0, 1, 1, 2)
+    end
     ui.columns(1)
 end
 

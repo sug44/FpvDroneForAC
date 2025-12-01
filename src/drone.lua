@@ -1,11 +1,3 @@
-local function betaflightRates(x, a, b, c) -- a-rate, b-super, c-expo
-    local p = 1 / (1 - (math.abs(x) * b))
-    local q = (x ^ 4 * c) + math.abs(x) * (1 - c)
-    local r = 200 * q * a
-    local t = r * p * (x < 0 and -1 or 1)
-    return t
-end
-
 local function thrust(isLinearAcceleration, airDensity, propDiameter, propPitch, motorKv, batteryCells, throttle, inflowVelocity)
     local force
     if not isLinearAcceleration then
@@ -136,10 +128,11 @@ function M:update(dt)
 
     self:collision()
 
+    local rateFunction = self.rateFunctions[Settings.rates.type]
     local rotation = {
-        roll = math.rad(betaflightRates(Input.roll, Settings.rollRate, Settings.rollSuper, Settings.rollExpo)) * dt,
-        pitch = math.rad(betaflightRates(Input.pitch, Settings.pitchRate, Settings.pitchSuper, Settings.pitchExpo)) * dt,
-        yaw = math.rad(betaflightRates(Input.yaw, Settings.yawRate, Settings.yawSuper, Settings.yawExpo)) * dt
+        roll = math.rad(rateFunction(Input.roll, Settings.rates.roll)) * dt,
+        pitch = math.rad(rateFunction(Input.pitch, Settings.rates.pitch)) * dt,
+        yaw = math.rad(rateFunction(Input.yaw, Settings.rates.yaw)) * dt
     }
 
     local rotationQuat =
@@ -235,5 +228,34 @@ function M:collision()
     end
     self.lastPosition = self.position:clone()
 end
+
+-- https://github.com/betaflight/betaflight/blob/master/src/main/fc/rc.c
+M.rateFunctions = {
+    betaflight = function(input, parameters)
+        local inputAbs = math.abs(input)
+        local rcCommandf = input * inputAbs^3 * parameters.expo + input * (1 - parameters.expo);
+        local rcRate = parameters.rate
+        if rcRate > 2 then
+            rcRate = rcRate + 14.54 * (rcRate - 2)
+        end
+        local rcSuperfactor = 1 / (math.clamp(1 - (inputAbs * parameters.super), 0.01, 1))
+        local angleRate = 200 * rcRate * rcCommandf * rcSuperfactor
+        return angleRate
+    end,
+    actual = function(input, parameters)
+        local inputAbs = math.abs(input)
+        local expo = inputAbs * (input^5 * parameters.expo + input * (1 - parameters.expo))
+        local stickMovement = math.max(0, parameters.maxRate - parameters.centerSensitivity);
+        local angleRate = input * parameters.centerSensitivity + stickMovement * expo;
+        return angleRate
+    end,
+    kiss = function(input, parameters)
+        local inputAbs = math.abs(input)
+        local kissRpyUseRates = 1 / math.clamp(1 - (inputAbs * parameters.super), 0.01, 1)
+        local kissRcCommandf = (input^3 * parameters.curve + input * (1 - parameters.curve)) * (parameters.rate/10)
+        local kissAngle = math.clamp(2000 * kissRpyUseRates * kissRcCommandf, -1998, 1998)
+        return kissAngle
+    end,
+}
 
 return M

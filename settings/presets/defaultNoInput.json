@@ -24,15 +24,12 @@
     "disableCollisionButton": { "type": "none", "key": -1 },
     "savePositionButton": { "type": "none", "key": -1 },
     "teleportToPositionButton": { "type": "none", "key": -1 },
-    "pitchRate": 1,
-    "pitchSuper": 0.7,
-    "pitchExpo": 0,
-    "rollRate": 1,
-    "rollSuper": 0.7,
-    "rollExpo": 0,
-    "yawRate": 1,
-    "yawSuper": 0.7,
-    "yawExpo": 0,
+    "rates": {
+        "type": "betaflight",
+        "pitch": { "rate": 1, "super": 0.7, "expo": 0 }
+        "roll": { "rate": 1, "super": 0.7, "expo": 0 }
+        "yaw": { "rate": 1, "super": 0.7, "expo": 0 }
+    },
     "droneMass": 0.6,
     "droneSurfaceArea": 0.015,
     "batteryCells": 6,
