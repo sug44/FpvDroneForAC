@@ -3,18 +3,26 @@ local M = {
     presetsPath = ac.dirname().."/settings/presets/",
     presets = {},
     notDeletablePresetsMap = { defaultNoInput = true, dualshock4 = true, xbox360 = true },
-    values = {},
+    settings = {},
+    finalizer = newproxy(true),
 }
+-- this saves settings in the json file when the game closes gracefully
+getmetatable(M.finalizer).__gc = function(_) M:saveSettings() end
 
 function M:load()
-    local settings = io.load(self.path)
-    if not settings then
+    local settings = JSON.parse(io.load(self.path))
+
+    -- check if settings file exists and is not empty
+    if not (settings and settings.inputDeviceGUID) then
         self:loadPreset("defaultNoInput")
         return
     end
-    for k, v in pairs(JSON.parse(settings)) do
-        self.values[k] = v
+
+    table.clear(self.settings)
+    for k,v in pairs(settings) do
+        self.settings[k] = v
     end
+
     Input:updateInputDevice()
 end
 
@@ -27,13 +35,11 @@ function M:loadPreset(presetName)
 end
 
 function M:savePreset(presetName)
-    io.save(self.presetsPath .. presetName .. ".json", JSON.stringify(self.values), true)
+    io.save(self.presetsPath .. presetName .. ".json", JSON.stringify(self.settings), true)
 end
 
 function M:deletePreset(presetName)
-    if not self.notDeletablePresetsMap[presetName] then
-        io.deleteFile(self.presetsPath..presetName..".json")
-    end
+    io.deleteFile(self.presetsPath..presetName..".json")
 end
 
 function M:updatePresets()
@@ -43,16 +49,15 @@ function M:updatePresets()
     end)
 end
 
-setmetatable(M, {
-    __index = M.values,
-    __newindex = function(table, index, value)
-        if M.values[index] == nil then
-            ac.error(debug.traceback("Tried to add a new key("..index..") to settings"))
-            return
-        end
-        M.values[index] = value
-        io.save(M.path, JSON.stringify(M.values), true)
+function M:saveSettings()
+    if self.settings.inputDeviceGUID then -- check if settings were loaded
+        io.save(self.path, JSON.stringify(self.settings), true)
     end
+end
+
+setmetatable(M, {
+    __index = M.settings,
+    __newindex = M.settings
 })
 
 return M
