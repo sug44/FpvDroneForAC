@@ -45,6 +45,7 @@ local function getClosestCar(toPosition)
 end
 
 local M = {
+    camera = nil, ---@type ac.GrabbedCamera
     previousCameraMode = nil,
     active = false,
     sleep = false,
@@ -56,6 +57,9 @@ local M = {
 
 function M:toggle()
     if not self.active then
+        self.camera, self.errorMessage = ac.grabCamera("Fpv Drone")
+        if not self.camera then return end
+
         self.position = ac.getCameraPosition()
         local cameraAngleQuat = quat.fromAngleAxis(-math.rad(Settings.cameraAngle), ac.getCameraSide())
         self.rotation.look = ac.getCameraForward():rotate(cameraAngleQuat)
@@ -74,6 +78,7 @@ function M:toggle()
     else
         if self.previousCameraMode then ac.setCurrentCamera(self.previousCameraMode) end
         self.active = false
+        self.camera:dispose()
     end
 end
 
@@ -147,6 +152,9 @@ function M:update(dt)
 
     local cameraPosition = self.position + self.rotation.up * 0.1
     local cameraAngleQuat = quat.fromAngleAxis(math.rad(Settings.cameraAngle), sideVector)
+
+    -- this fixes the issue of car models being low quality when far away, actual camera control is below
+    self.camera.transform.position = cameraPosition
 
     -- ac.GrabbedCamera has a delay when updating position from CSP v0.1.80-preview115 to at least v0.2.11
     -- There needs to be no delay for jitter compensation to work, so use these functions instead.

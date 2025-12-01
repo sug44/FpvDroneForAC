@@ -293,6 +293,9 @@ function M.fpvDroneWindow()
     if Drone.active then
         if ui.button(Drone.sleep and "Sleep off" or "Sleep on", vec2(70, 0)) then Drone:toggleSleep() end
     end
+    if Drone.errorMessage then
+        ui.textWrapped(Drone.errorMessage)
+    end
 
     local square0pos = vec2(ui.windowWidth() / 2 - 26, 54)
     local square1pos = vec2(ui.windowWidth() / 2 + 27, 54)
